@@ -1,0 +1,40 @@
+{
+  "apps": {
+    "http": {
+      "servers": {
+        "srv0": {
+          "listen": [":80"],
+          "routes": [
+            {
+              "handle": [
+                {
+                  "handler": "subroute",
+                  "routes": [
+                    {
+                      "handle": [
+                        {
+                          "handler": "reverse_proxy",
+                          "upstreams": [{ "dial": "backend:3001" }]
+                        }
+                      ],
+                      "match": [{ "path": ["/api/*"] }]
+                    },
+                    {
+                      "handle": [
+                        {
+                          "handler": "file_server",
+                          "root": "/srv/www",
+                          "index_names": ["index.html"]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
