@@ -7,11 +7,7 @@ https://crm.agencianetmark.com {
     reverse_proxy backend:3001
   }
 
-  handle {
-    root * /srv/www
-    try_files {path} /index.html
-    file_server
-  }
+  reverse_proxy frontend:4173
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     Referrer-Policy "strict-origin-when-cross-origin"
