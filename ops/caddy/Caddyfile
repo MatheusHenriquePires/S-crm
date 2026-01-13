@@ -1,8 +1,10 @@
 {
   admin off
+  auto_https off
+  http_port 80
 }
 
-https://crm.agencianetmark.com {
+http://crm.agencianetmark.com {
   handle_path /api/* {
     reverse_proxy backend:3001
   }
