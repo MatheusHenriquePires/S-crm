@@ -3,12 +3,8 @@ version: "3.9"
 services:
   caddy:
     image: caddy:2.8
-    container_name: splus-caddy
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-    ports:
-      - "8080:80"
-      - "8443:443"
     environment:
       - CADDY_ADMIN=off
     restart: unless-stopped
