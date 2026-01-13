@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1767639721228,
+      "tag": "0000_sleepy_selene",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1767725744872,
+      "tag": "0001_whatsapp_integration",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767725744873,
+      "tag": "0002_add_cloud_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767725744874,
+      "tag": "0003_whatsapp_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767725744875,
+      "tag": "0004_meta_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767725744876,
+      "tag": "0005_add_contact_photo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1767969180000,
+      "tag": "0006_add_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1767980000000,
+      "tag": "0007_add_wamid",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1768245000000,
+      "tag": "0008_add_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768250000000,
+      "tag": "0009_add_reply_wamid",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1768344000000,
+      "tag": "0010_add_classification",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1768345200000,
+      "tag": "0011_add_pipeline_fields",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    env_file:
+      - ../backend/.env
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../crm-frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3001
+    ports:
+      - "4173:4173"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8
+    container_name: splus-caddy
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "8080:80"
+      - "8443:443"
+    environment:
+      - CADDY_ADMIN=off
+    depends_on:
+      - backend
+    restart: unless-stopped

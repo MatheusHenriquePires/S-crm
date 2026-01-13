@@ -1,0 +1,6 @@
+# Ignore local WPPConnect session data and caches
+backend/.wppconnect/
+
+# Node build artifacts (optional safety)
+backend/dist/
+crm-frontend/dist/
