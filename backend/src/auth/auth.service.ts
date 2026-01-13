@@ -1,14 +1,18 @@
-﻿import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common'
-import { JwtService } from '@nestjs/jwt'
-import * as bcrypt from 'bcrypt'
-import { eq } from 'drizzle-orm'
-import { createId } from '@paralleldrive/cuid2'
+﻿import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { eq } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
 
-import { db } from '../db/db'
-import { accounts, users } from '../db/schema'
-import { SignupAccountDto } from './dto/signup-account.dto'
-import { SignupUserDto } from './dto/signup-user.dto'
-import { LoginDto } from './dto/login.dto'
+import { db } from '../db/db';
+import { accounts, users } from '../db/schema';
+import { SignupAccountDto } from './dto/signup-account.dto';
+import { SignupUserDto } from './dto/signup-user.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -23,23 +27,23 @@ export class AuthService {
         .select()
         .from(accounts)
         .where(eq(accounts.email, dto.email))
-        .limit(1)
+        .limit(1);
 
       if (existing.length) {
-        throw new BadRequestException('Ja existe uma conta com esse email.')
+        throw new BadRequestException('Ja existe uma conta com esse email.');
       }
     }
 
-    const accountId = createId()
+    const accountId = createId();
 
     await db.insert(accounts).values({
       id: accountId,
       name: dto.name,
       ownerName: dto.ownerName ?? null,
       email: dto.email ?? null,
-    })
+    });
 
-    return { id: accountId }
+    return { id: accountId };
   }
 
   // ===============================
@@ -51,10 +55,10 @@ export class AuthService {
       .select()
       .from(accounts)
       .where(eq(accounts.id, dto.accountId))
-      .limit(1)
+      .limit(1);
 
     if (!acc.length) {
-      throw new BadRequestException('Conta nao encontrada.')
+      throw new BadRequestException('Conta nao encontrada.');
     }
 
     // Email unico
@@ -62,14 +66,14 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.email, dto.email))
-      .limit(1)
+      .limit(1);
 
     if (existingUser.length) {
-      throw new BadRequestException('Email ja esta em uso.')
+      throw new BadRequestException('Email ja esta em uso.');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10)
-    const userId = createId()
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const userId = createId();
 
     await db.insert(users).values({
       id: userId,
@@ -78,9 +82,9 @@ export class AuthService {
       email: dto.email,
       passwordHash,
       role: 'ADMIN',
-    })
+    });
 
-    const token = await this.signToken(userId, dto.accountId, 'ADMIN')
+    const token = await this.signToken(userId, dto.accountId, 'ADMIN');
 
     return {
       user: {
@@ -91,7 +95,7 @@ export class AuthService {
         role: 'ADMIN',
       },
       token,
-    }
+    };
   }
 
   // ===============================
@@ -102,20 +106,20 @@ export class AuthService {
       .select()
       .from(users)
       .where(eq(users.email, dto.email))
-      .limit(1)
+      .limit(1);
 
     if (!found.length) {
-      throw new UnauthorizedException('Email ou senha invalidos.')
+      throw new UnauthorizedException('Email ou senha invalidos.');
     }
 
-    const user = found[0]
+    const user = found[0];
 
-    const ok = await bcrypt.compare(dto.password, user.passwordHash)
+    const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) {
-      throw new UnauthorizedException('Email ou senha invalidos.')
+      throw new UnauthorizedException('Email ou senha invalidos.');
     }
 
-    const token = await this.signToken(user.id, user.accountId, user.role)
+    const token = await this.signToken(user.id, user.accountId, user.role);
 
     return {
       user: {
@@ -126,7 +130,7 @@ export class AuthService {
         role: user.role,
       },
       token,
-    }
+    };
   }
 
   // ===============================
@@ -137,11 +141,11 @@ export class AuthService {
       sub: userId,
       accountId,
       role,
-    }
+    };
 
     return this.jwt.signAsync(payload, {
       secret: process.env.JWT_SECRET || 'dev_secret_change_me',
       expiresIn: 60 * 60 * 24 * 7, // 7 dias
-    })
+    });
   }
 }

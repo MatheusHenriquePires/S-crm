@@ -1,6 +1,12 @@
-import { pgTable, text, timestamp, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  text,
+  timestamp,
+  pgEnum,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 
-export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER'])
+export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER']);
 
 export const accounts = pgTable('Account', {
   id: text('id').primaryKey(), // vamos gerar cuid no app (ou pode usar uuid no banco)
@@ -8,9 +14,13 @@ export const accounts = pgTable('Account', {
   ownerName: text('ownerName'),
   email: text('email').unique(),
 
-  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull(),
-})
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
 export const users = pgTable('User', {
   id: text('id').primaryKey(),
@@ -20,12 +30,19 @@ export const users = pgTable('User', {
   passwordHash: text('passwordHash').notNull(),
   role: userRoleEnum('role').default('ADMIN').notNull(),
 
-  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull(),
-})
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
-export const whatsappProviderEnum = pgEnum('WhatsappProvider', ['CLOUD'])
-export const whatsappStatusEnum = pgEnum('WhatsappIntegrationStatus', ['PENDING', 'CONNECTED'])
+export const whatsappProviderEnum = pgEnum('WhatsappProvider', ['CLOUD']);
+export const whatsappStatusEnum = pgEnum('WhatsappIntegrationStatus', [
+  'PENDING',
+  'CONNECTED',
+]);
 
 export const whatsappIntegrations = pgTable('WhatsappIntegration', {
   id: text('id').primaryKey(),
@@ -33,11 +50,18 @@ export const whatsappIntegrations = pgTable('WhatsappIntegration', {
   provider: whatsappProviderEnum('provider').notNull(),
   status: whatsappStatusEnum('status').notNull().default('PENDING'),
   encryptedPayload: text('encryptedPayload').notNull(),
-  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull(),
-})
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
-export const messageDirectionEnum = pgEnum('MessageDirection', ['INBOUND', 'OUTBOUND'])
+export const messageDirectionEnum = pgEnum('MessageDirection', [
+  'INBOUND',
+  'OUTBOUND',
+]);
 
 export const whatsappConversations = pgTable('WhatsappConversation', {
   id: text('id').primaryKey(),
@@ -49,10 +73,16 @@ export const whatsappConversations = pgTable('WhatsappConversation', {
   source: text('source'),
   value: text('value'),
   classification: text('classification'),
-  lastMessageAt: timestamp('lastMessageAt', { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull(),
-})
+  lastMessageAt: timestamp('lastMessageAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
 
 export const whatsappMessages = pgTable(
   'WhatsappMessage',
@@ -61,23 +91,31 @@ export const whatsappMessages = pgTable(
     conversationId: text('conversationId').notNull(),
     direction: messageDirectionEnum('direction').notNull(),
     body: text('body').notNull(),
-    messageTimestamp: timestamp('messageTimestamp', { withTimezone: true }).defaultNow().notNull(),
+    messageTimestamp: timestamp('messageTimestamp', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     rawPayload: text('rawPayload').notNull(),
     wamid: text('wamid'),
     status: text('status').default('sent'),
     replyToWamid: text('replyToWamid'),
-    createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('createdAt', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => ({
     wamidIdx: uniqueIndex('whatsapp_message_wamid_idx').on(table.wamid),
   }),
-)
+);
 
 export const metaIntegrations = pgTable('MetaIntegration', {
   id: text('id').primaryKey(),
   accountId: text('accountId').notNull().unique(),
   metaUserId: text('metaUserId').notNull(),
   encryptedPayload: text('encryptedPayload').notNull(),
-  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull(),
-})
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

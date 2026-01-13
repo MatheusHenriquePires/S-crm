@@ -1,7 +1,7 @@
-import { Controller, Get, Query, Res } from '@nestjs/common'
-import type { Response } from 'express'
-import { AuthService } from './auth.service'
-import { MetaAuthService } from './meta.service'
+import { Controller, Get, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { AuthService } from './auth.service';
+import { MetaAuthService } from './meta.service';
 
 @Controller('auth/meta')
 export class MetaController {
@@ -12,12 +12,12 @@ export class MetaController {
 
   @Get('url')
   getUrl(@Query('returnUrl') returnUrl?: string) {
-    return { url: this.meta.buildLoginUrl(returnUrl) }
+    return { url: this.meta.buildLoginUrl(returnUrl) };
   }
 
   @Get('status')
   async getStatus() {
-    return this.meta.getAppStatus()
+    return this.meta.getAppStatus();
   }
 
   @Get('callback')
@@ -27,19 +27,19 @@ export class MetaController {
     @Res() res: Response,
   ) {
     if (!code) {
-      return res.status(400).send('Missing code')
+      return res.status(400).send('Missing code');
     }
 
-    const result = await this.meta.exchangeCode(code)
-    const user = await this.meta.getUserProfile(result.access_token)
-    const { accountId, userId } = await this.meta.upsertAccountAndUser(user)
-    await this.meta.saveIntegration(accountId, user.id, result.access_token)
+    const result = await this.meta.exchangeCode(code);
+    const user = await this.meta.getUserProfile(result.access_token);
+    const { accountId, userId } = await this.meta.upsertAccountAndUser(user);
+    await this.meta.saveIntegration(accountId, user.id, result.access_token);
 
-    const token = await this.auth.signToken(userId, accountId, 'ADMIN')
-    const redirectBase = this.meta.resolveReturnUrl(state)
+    const token = await this.auth.signToken(userId, accountId, 'ADMIN');
+    const redirectBase = this.meta.resolveReturnUrl(state);
     const redirect = `${redirectBase}/auth/facebook/callback?token=${encodeURIComponent(
       token,
-    )}&accountId=${encodeURIComponent(accountId)}`
-    return res.redirect(redirect)
+    )}&accountId=${encodeURIComponent(accountId)}`;
+    return res.redirect(redirect);
   }
 }

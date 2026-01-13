@@ -1,9 +1,9 @@
-﻿import { Module } from '@nestjs/common'
-import { JwtModule } from '@nestjs/jwt'
-import { AuthController } from './auth.controller'
-import { AuthService } from './auth.service'
-import { MetaController } from './meta.controller'
-import { MetaAuthService } from './meta.service'
+﻿import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { MetaController } from './meta.controller';
+import { MetaAuthService } from './meta.service';
 
 @Module({
   imports: [
