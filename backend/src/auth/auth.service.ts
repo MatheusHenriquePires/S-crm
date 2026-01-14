@@ -123,6 +123,10 @@ export class AuthService {
 
     const user = found[0];
 
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Usuario nao possui senha local.');
+    }
+
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) {
       throw new UnauthorizedException('Email ou senha invalidos.');
