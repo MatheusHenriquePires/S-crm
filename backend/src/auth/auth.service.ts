@@ -1,6 +1,7 @@
-﻿import {
+import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -111,11 +112,17 @@ export class AuthService {
   // LOGIN
   // ===============================
   async login(dto: LoginDto) {
-    const found = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, dto.email))
-      .limit(1);
+    let found: typeof users.$inferSelect[] = [];
+    try {
+      found = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, dto.email))
+        .limit(1);
+    } catch (err) {
+      console.error('AuthService.login query error', err);
+      throw new InternalServerErrorException('Falha ao consultar usuario.');
+    }
 
     if (!found.length) {
       throw new UnauthorizedException('Email ou senha invalidos.');
