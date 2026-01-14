@@ -20,21 +20,9 @@ async function bootstrap() {
     }),
   );
 
-  const origins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
-
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) {
-        return callback(null, true);
-      }
-      if (origins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error('Not allowed by CORS'));
-    },
+    // Afrouxado para evitar bloqueio em produção (reflete a origem do request).
+    origin: true,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -44,6 +32,7 @@ async function bootstrap() {
       'Accept',
       'Origin',
     ],
+    optionsSuccessStatus: 204,
     maxAge: 7200,
   });
 
