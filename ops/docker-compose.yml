@@ -8,6 +8,8 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgres://postgres:12345@system_bancodb:5432/system?sslmode=disable}
       - JWT_SECRET=${JWT_SECRET:-changeme}
       - CORS_ORIGINS=${CORS_ORIGINS:-https://crm.agencianetmark.com}
+    ports:
+      - "3001:3001"
     restart: unless-stopped
 
   frontend:
@@ -19,4 +21,3 @@ services:
     environment:
       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://backend:3001}
     restart: unless-stopped
-
