@@ -16,7 +16,16 @@ import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(private jwt: JwtService) {}
+  private readonly jwtSecret: string;
+  private readonly accessExpiresIn = 60 * 15; // 15 minutos
+  private readonly saltRounds = Number(process.env.BCRYPT_ROUNDS ?? 12);
+
+  constructor(private jwt: JwtService) {
+    this.jwtSecret = process.env.JWT_SECRET || '';
+    if (!this.jwtSecret) {
+      throw new Error('JWT_SECRET is not set');
+    }
+  }
 
   // ===============================
   // SIGNUP ACCOUNT (empresa)
@@ -72,7 +81,7 @@ export class AuthService {
       throw new BadRequestException('Email ja esta em uso.');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, this.saltRounds);
     const userId = createId();
 
     await db.insert(users).values({
@@ -144,8 +153,8 @@ export class AuthService {
     };
 
     return this.jwt.signAsync(payload, {
-      secret: process.env.JWT_SECRET || 'dev_secret_change_me',
-      expiresIn: 60 * 60 * 24 * 7, // 7 dias
+      secret: this.jwtSecret,
+      expiresIn: this.accessExpiresIn,
     });
   }
 }
