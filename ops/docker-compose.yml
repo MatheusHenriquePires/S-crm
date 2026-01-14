@@ -6,7 +6,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=postgresql://postgres:12345@system_bancodb:5432/system?schema=public
+      - DATABASE_URL=postgresql://postgres:12345@system_bancodb:5432/crm?schema=public
       - JWT_SECRET=uma_chave_segura
       - CORS_ORIGINS=https://crm.agencianetmark.com,https://api.agencianetmark.com
     ports:
