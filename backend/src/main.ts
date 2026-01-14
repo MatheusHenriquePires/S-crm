@@ -20,6 +20,29 @@ async function bootstrap() {
     }),
   );
 
+  // CORS fallback to ensure headers in all responses (including preflight).
+  app.use((req, res, next) => {
+    const requestOrigin = req.headers.origin as string | undefined;
+    if (requestOrigin) {
+      res.header('Access-Control-Allow-Origin', requestOrigin);
+      res.header('Vary', 'Origin');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-Requested-With, Accept, Origin',
+    );
+    res.header(
+      'Access-Control-Allow-Methods',
+      'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    );
+
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+
   app.enableCors({
     // Afrouxado para evitar bloqueio em produção (reflete a origem do request).
     origin: true,
