@@ -4,36 +4,38 @@ import {
   timestamp,
   pgEnum,
   uniqueIndex,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER']);
 
-export const accounts = pgTable('Account', {
+export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(), // vamos gerar cuid no app (ou pode usar uuid no banco)
   name: text('name').notNull(),
-  ownerName: text('ownerName'),
+  ownerName: text('owner_name'),
   email: text('email').unique(),
 
-  createdAt: timestamp('createdAt', { withTimezone: true })
+  createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true })
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
 
-export const users = pgTable('User', {
+export const users = pgTable('users', {
   id: text('id').primaryKey(),
-  accountId: text('accountId').notNull(), // depois colocamos FK se quiser
+  accountId: text('account_id').notNull(), // depois colocamos FK se quiser
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  passwordHash: text('passwordHash').notNull(),
+  passwordHash: text('password_hash'),
   role: userRoleEnum('role').default('ADMIN').notNull(),
+  isActive: boolean('is_active').default(true),
 
-  createdAt: timestamp('createdAt', { withTimezone: true })
+  createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true })
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
