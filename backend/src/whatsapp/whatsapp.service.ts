@@ -1304,24 +1304,25 @@ export class WhatsappService {
     accountId: string,
     contactPhone: string,
   ) {
-    const { conversations, messages } = await this.getTables();
+    const { conversations, messages, contacts } = await this.getTables();
     const normalized = this.sanitizeContactPhone(contactPhone);
     const convo = await db
       .select({ id: conversations.id })
       .from(conversations)
+      .leftJoin(contacts, eq(conversations.contactId, contacts.id))
       .where(
         and(
           eq(conversations.accountId, accountId),
-          eq(conversations.contactPhone, normalized),
+          eq(contacts.phoneE164, this.sanitizePhoneE164(normalized)),
         ),
       )
       .limit(1);
     if (!convo.length) return null;
     const latest = await db
-      .select({ messageTimestamp: messages.messageTimestamp })
+      .select({ messageTimestamp: messages.createdAt })
       .from(messages)
       .where(eq(messages.conversationId, convo[0].id))
-      .orderBy(desc(messages.messageTimestamp))
+      .orderBy(desc(messages.createdAt))
       .limit(1);
     return latest.length ? latest[0].messageTimestamp : null;
   }
