@@ -966,11 +966,17 @@ export class WhatsappService {
   }
 
   async listPipeline(accountId: string) {
-    const rows = await db
-      .select()
-      .from(whatsappConversations)
-      .where(eq(whatsappConversations.accountId, accountId))
-      .orderBy(desc(whatsappConversations.lastMessageAt));
+    let rows: typeof whatsappConversations.$inferSelect[] = [];
+    try {
+      rows = await db
+        .select()
+        .from(whatsappConversations)
+        .where(eq(whatsappConversations.accountId, accountId))
+        .orderBy(desc(whatsappConversations.lastMessageAt));
+    } catch (err) {
+      console.error('[whatsapp] listPipeline failed', err);
+      return [];
+    }
 
     const defaultStages = [
       'entrando',
@@ -1129,11 +1135,16 @@ export class WhatsappService {
   }
 
   async listConversations(accountId: string) {
-    return db
-      .select()
-      .from(whatsappConversations)
-      .where(eq(whatsappConversations.accountId, accountId))
-      .orderBy(desc(whatsappConversations.lastMessageAt));
+    try {
+      return await db
+        .select()
+        .from(whatsappConversations)
+        .where(eq(whatsappConversations.accountId, accountId))
+        .orderBy(desc(whatsappConversations.lastMessageAt));
+    } catch (err) {
+      console.error('[whatsapp] listConversations failed', err);
+      return [];
+    }
   }
 
   async listMessages(conversationId: string) {
