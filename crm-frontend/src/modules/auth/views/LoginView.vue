@@ -32,6 +32,7 @@ async function login() {
     }
     if (accountId) {
       onboarding.setAccountCreated(accountId)
+      markFirstLogin(accountId)
       await syncWhatsappStatus(accountId)
     }
     onboarding.setUserCreated()
@@ -67,6 +68,21 @@ async function loginWithFacebook() {
   const url = response.data?.url
   if (url) {
     window.location.href = url
+  }
+}
+
+function markFirstLogin(accountId: string) {
+  const key = 'first_login_at_v1'
+  let map: Record<string, string> = {}
+  try {
+    const raw = localStorage.getItem(key)
+    map = raw ? JSON.parse(raw) : {}
+  } catch {
+    map = {}
+  }
+  if (!map[accountId]) {
+    map[accountId] = new Date().toISOString()
+    localStorage.setItem(key, JSON.stringify(map))
   }
 }
 </script>

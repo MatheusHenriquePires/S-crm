@@ -112,7 +112,12 @@ function formatTime(value?: string | null) {
 
 function dedupeConversations(list: Conversation[]) {
   const map = new Map<string, Conversation>()
+  const firstLoginAt = loadFirstLoginAt(accountId.value)
   for (const item of list) {
+    // filtra para mostrar apenas conversas com mensagens depois do primeiro login
+    const lastTs = new Date(item.lastMessageAt).getTime()
+    if (firstLoginAt && (!Number.isFinite(lastTs) || lastTs < firstLoginAt)) continue
+
     const normalized = normalizePhone(item.contactPhone)
     const shortKey =
       normalized.length > 11 ? normalized.slice(-11) : normalized || item.contactPhone || item.id
@@ -561,6 +566,20 @@ function startRealtime() {
       loadMessages(activeConversationId.value)
     }
   }, 5000)
+}
+
+function loadFirstLoginAt(accountId: string | null) {
+  if (!accountId) return null
+  try {
+    const raw = localStorage.getItem('first_login_at_v1')
+    if (!raw) return null
+    const map = JSON.parse(raw)
+    const val = map?.[accountId]
+    const ts = val ? new Date(val).getTime() : NaN
+    return Number.isFinite(ts) ? ts : null
+  } catch {
+    return null
+  }
 }
 
 onMounted(() => {
