@@ -1519,46 +1519,4 @@ export class WhatsappService {
     const buffer: Buffer = await client.decryptFile(payload);
     return { buffer, mimetype };
   }
-  private sanitizePhoneE164(value: string) {
-    const digits = value.replace(/\D/g, '');
-    if (!digits) return '';
-    return digits.startsWith('+') ? digits : `+${digits}`;
-  }
-
-  private async ensureContact(
-    accountId: string,
-    contactPhone?: string | null,
-    contactName?: string | null,
-  ) {
-    const { contacts } = await this.getTables();
-    const phone = contactPhone ? this.sanitizePhoneE164(contactPhone) : '';
-    const safePhone = phone && phone.trim() ? phone : `+${createId()}`;
-
-    const existing = await db
-      .select()
-      .from(contacts)
-      .where(
-        and(
-          eq(contacts.accountId, accountId),
-          eq(contacts.phoneE164, safePhone),
-        ),
-      )
-      .limit(1);
-    if (existing.length) {
-      return {
-        contactId: existing[0].id,
-        phone: existing[0].phoneE164,
-        name: existing[0].name,
-      };
-    }
-
-    const contactId = createId();
-    await db.insert(contacts).values({
-      id: contactId,
-      accountId,
-      name: contactName ?? null,
-      phoneE164: safePhone,
-    });
-    return { contactId, phone: safePhone, name: contactName ?? null };
-  }
 }

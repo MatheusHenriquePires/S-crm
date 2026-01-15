@@ -45,7 +45,10 @@ type ClassificationRequest = {
 type StageRequest = {
   accountId: string;
   stage?: string | null;
-  source?: string | null;
+};
+
+type ValueRequest = {
+  accountId: string;
   value?: string | null;
 };
 
@@ -54,7 +57,6 @@ type CreateLeadRequest = {
   contactName: string;
   contactPhone?: string | null;
   stage?: string | null;
-  source?: string | null;
   value?: string | null;
   classification?: string | null;
 };
@@ -244,8 +246,6 @@ export class WhatsappController {
       body.accountId,
       conversationId,
       body.stage ?? null,
-      body.source ?? null,
-      body.value ?? null,
     );
   }
 
@@ -253,13 +253,12 @@ export class WhatsappController {
   @Post('conversations/:conversationId/value')
   async setValue(
     @Param('conversationId') conversationId: string,
-    @Body() body: StageRequest,
+    @Body() body: ValueRequest,
   ) {
     return this.whatsapp.updateConversationValue(
       body.accountId,
       conversationId,
       body.value ?? null,
-      body.source ?? null,
     );
   }
 
@@ -271,7 +270,6 @@ export class WhatsappController {
       contactName: body.contactName,
       contactPhone: body.contactPhone,
       stage: body.stage ?? null,
-      source: body.source ?? null,
       value: body.value ?? null,
       classification: body.classification ?? null,
     });
