@@ -536,9 +536,6 @@ export class WhatsappService {
               }
             });
           }
-          this.syncRecentHistory(accountId, client).catch(() => {
-            // ignore history sync errors
-          });
         })
         .catch((error) => {
           const msg =
