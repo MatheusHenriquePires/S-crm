@@ -456,12 +456,19 @@ export class WhatsappService {
           });
         })
         .catch((error) => {
-          logger.error({ error }, 'wppconnect create failed');
+          const msg =
+            (error && typeof (error as any).message === 'string'
+              ? (error as any).message
+              : '') || '';
+          const reason = /chromium|chrome/i.test(msg)
+            ? 'chromium_not_found'
+            : 'create_failed';
+          logger.error({ error, reason }, 'wppconnect create failed');
           const next = {
             ...this.getStatus(accountId),
             type: 'qr' as const,
             status: 'disconnected' as const,
-            lastError: 'create_failed',
+            lastError: reason || 'create_failed',
             lastUpdatedAt: Date.now(),
           };
           this.connections.set(accountId, next);
