@@ -8,33 +8,33 @@ import {
 
 export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER']);
 
-// Tabelas seguem o naming original das migrações (PascalCase + camelCase columns)
-export const accounts = pgTable('Account', {
+// Tabelas em snake_case conforme o banco "crm"
+export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(), // vamos gerar cuid no app (ou pode usar uuid no banco)
   name: text('name').notNull(),
-  ownerName: text('ownerName'),
+  ownerName: text('owner_name'),
   email: text('email').unique(),
 
-  createdAt: timestamp('createdAt', { withTimezone: true })
+  createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true })
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
 
-export const users = pgTable('User', {
+export const users = pgTable('users', {
   id: text('id').primaryKey(),
-  accountId: text('accountId').notNull(), // depois colocamos FK se quiser
+  accountId: text('account_id').notNull(), // depois colocamos FK se quiser
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  passwordHash: text('passwordHash').notNull(),
+  passwordHash: text('password_hash').notNull(),
   role: userRoleEnum('role').default('ADMIN').notNull(),
 
-  createdAt: timestamp('createdAt', { withTimezone: true })
+  createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true })
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
