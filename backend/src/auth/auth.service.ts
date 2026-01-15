@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
 import { db } from '../db/db';
-import { accounts, users } from '../db/schema';
+import { getAccountsTable, getUsersTable } from '../db/tables';
 import { SignupAccountDto } from './dto/signup-account.dto';
 import { SignupUserDto } from './dto/signup-user.dto';
 import { LoginDto } from './dto/login.dto';
@@ -32,6 +32,8 @@ export class AuthService {
   // SIGNUP ACCOUNT (empresa)
   // ===============================
   async signupAccount(dto: SignupAccountDto) {
+    const accounts = await getAccountsTable();
+
     if (dto.email) {
       const existing = await db
         .select()
@@ -60,6 +62,9 @@ export class AuthService {
   // SIGNUP USER (admin)
   // ===============================
   async signupUser(dto: SignupUserDto) {
+    const accounts = await getAccountsTable();
+    const users = await getUsersTable();
+
     // Verifica se a conta existe
     const acc = await db
       .select()
@@ -112,6 +117,7 @@ export class AuthService {
   // LOGIN
   // ===============================
   async login(dto: LoginDto) {
+    const users = await getUsersTable();
     let found: typeof users.$inferSelect[] = [];
     try {
       found = await db

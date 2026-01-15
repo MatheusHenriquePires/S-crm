@@ -8,8 +8,9 @@ import {
 
 export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER']);
 
-// Tabelas em snake_case conforme o banco "crm"
-export const accounts = pgTable('accounts', {
+// Definimos duas variações para lidar com bancos legados (PascalCase) e novos (snake_case).
+// Usamos os mesmos nomes de propriedades para facilitar o uso dinâmico.
+export const accountsSnake = pgTable('accounts', {
   id: text('id').primaryKey(), // vamos gerar cuid no app (ou pode usar uuid no banco)
   name: text('name').notNull(),
   ownerName: text('owner_name'),
@@ -23,7 +24,21 @@ export const accounts = pgTable('accounts', {
     .notNull(),
 });
 
-export const users = pgTable('users', {
+export const accountsPascal = pgTable('Account', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  ownerName: text('ownerName'),
+  email: text('email').unique(),
+
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const usersSnake = pgTable('users', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(), // depois colocamos FK se quiser
   name: text('name').notNull(),
@@ -35,6 +50,22 @@ export const users = pgTable('users', {
     .defaultNow()
     .notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const usersPascal = pgTable('User', {
+  id: text('id').primaryKey(),
+  accountId: text('accountId').notNull(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('passwordHash').notNull(),
+  role: userRoleEnum('role').default('ADMIN').notNull(),
+
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
     .defaultNow()
     .notNull(),
 });

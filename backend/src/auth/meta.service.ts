@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { createId } from '@paralleldrive/cuid2';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/db';
-import { accounts, users } from '../db/schema';
+import { getAccountsTable, getUsersTable } from '../db/tables';
 import { encryptPayload } from '../whatsapp/crypto';
 
 type MetaTokenResponse = {
@@ -130,6 +130,8 @@ export class MetaAuthService {
   }
 
   async upsertAccountAndUser(metaUser: MetaUser) {
+    const accounts = await getAccountsTable();
+    const users = await getUsersTable();
     const email = metaUser.email?.toLowerCase() || null;
     let accountId = '';
     let userId = '';
