@@ -76,7 +76,7 @@ export const whatsappStatusEnum = pgEnum('WhatsappIntegrationStatus', [
   'CONNECTED',
 ]);
 
-export const whatsappIntegrations = pgTable('whatsapp_connections', {
+export const whatsappIntegrationsSnake = pgTable('whatsapp_connections', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(),
   provider: whatsappProviderEnum('provider').notNull(),
@@ -90,12 +90,26 @@ export const whatsappIntegrations = pgTable('whatsapp_connections', {
     .notNull(),
 });
 
+export const whatsappIntegrationsCamel = pgTable('whatsapp_connections', {
+  id: text('id').primaryKey(),
+  accountId: text('accountId').notNull(),
+  provider: whatsappProviderEnum('provider').notNull(),
+  status: whatsappStatusEnum('status').notNull().default('PENDING'),
+  encryptedPayload: text('encryptedPayload').notNull(),
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const messageDirectionEnum = pgEnum('MessageDirection', [
   'INBOUND',
   'OUTBOUND',
 ]);
 
-export const whatsappConversations = pgTable('conversations', {
+export const whatsappConversationsSnake = pgTable('conversations', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(),
   contactPhone: text('contact_phone').notNull(),
@@ -116,7 +130,28 @@ export const whatsappConversations = pgTable('conversations', {
     .notNull(),
 });
 
-export const whatsappMessages = pgTable(
+export const whatsappConversationsCamel = pgTable('conversations', {
+  id: text('id').primaryKey(),
+  accountId: text('accountId').notNull(),
+  contactPhone: text('contactPhone').notNull(),
+  contactName: text('contactName'),
+  contactPhotoUrl: text('contactPhotoUrl'),
+  stage: text('stage').default('entrando'),
+  source: text('source'),
+  value: text('value'),
+  classification: text('classification'),
+  lastMessageAt: timestamp('lastMessageAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdAt: timestamp('createdAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const whatsappMessagesSnake = pgTable(
   'messages',
   {
     id: text('id').primaryKey(),
@@ -131,6 +166,29 @@ export const whatsappMessages = pgTable(
     status: text('status').default('sent'),
     replyToWamid: text('reply_to_wamid'),
     createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    wamidIdx: uniqueIndex('whatsapp_message_wamid_idx').on(table.wamid),
+  }),
+);
+
+export const whatsappMessagesCamel = pgTable(
+  'messages',
+  {
+    id: text('id').primaryKey(),
+    conversationId: text('conversationId').notNull(),
+    direction: messageDirectionEnum('direction').notNull(),
+    body: text('body').notNull(),
+    messageTimestamp: timestamp('messageTimestamp', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    rawPayload: text('rawPayload').notNull(),
+    wamid: text('wamid'),
+    status: text('status').default('sent'),
+    replyToWamid: text('replyToWamid'),
+    createdAt: timestamp('createdAt', { withTimezone: true })
       .defaultNow()
       .notNull(),
   },

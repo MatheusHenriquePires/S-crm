@@ -7,14 +7,14 @@ import pino from 'pino';
 import { and, desc, eq, gt, lt } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { db } from '../db/db';
-import { whatsappIntegrations } from '../db/schema';
+import {
+  getConversationsTable,
+  getMessagesTable,
+  getWhatsappIntegrationsTable,
+} from '../db/tables';
 import { decryptPayload, encryptPayload } from './crypto';
 import { createId } from '@paralleldrive/cuid2';
-import {
-  metaIntegrations,
-  whatsappConversations,
-  whatsappMessages,
-} from '../db/schema';
+import { metaIntegrations } from '../db/schema';
 
 type ConnectionType = 'cloud' | 'qr';
 type ConnectionStatus = 'disconnected' | 'pending' | 'connected';
@@ -49,6 +49,28 @@ export class WhatsappService {
   private readonly startPromises = new Map<string, Promise<ConnectionState>>();
   private readonly recentMessageIds = new Map<string, Map<string, number>>();
   private readonly historyProcessing = new Set<string>();
+  private tablesPromise:
+    | Promise<{
+        conversations: any;
+        messages: any;
+        integrations: any;
+      }>
+    | null = null;
+
+  private async getTables() {
+    if (!this.tablesPromise) {
+      this.tablesPromise = Promise.all([
+        getConversationsTable(),
+        getMessagesTable(),
+        getWhatsappIntegrationsTable(),
+      ]).then(([conversations, messages, integrations]) => ({
+        conversations,
+        messages,
+        integrations,
+      }));
+    }
+    return this.tablesPromise;
+  }
 
   private mapAckToStatus(ack: number) {
     if (ack >= 4) return 'played';
@@ -584,6 +606,7 @@ export class WhatsappService {
   }
 
   async saveCloudCredentials(accountId: string, creds: CloudCredentials) {
+    const { integrations } = await this.getTables();
     const encryptedPayload = encryptPayload({
       accessToken: creds.accessToken,
       phoneNumberId: creds.phoneNumberId,
@@ -593,24 +616,24 @@ export class WhatsappService {
 
     const existing = await db
       .select()
-      .from(whatsappIntegrations)
-      .where(eq(whatsappIntegrations.accountId, accountId))
+      .from(integrations)
+      .where(eq(integrations.accountId, accountId))
       .limit(1);
 
     if (existing.length) {
       await db
-        .update(whatsappIntegrations)
+        .update(integrations)
         .set({
           provider: 'CLOUD',
           status: 'PENDING',
           encryptedPayload,
           updatedAt: new Date(),
         })
-        .where(eq(whatsappIntegrations.accountId, accountId));
+        .where(eq(integrations.accountId, accountId));
       return { status: 'PENDING' };
     }
 
-    await db.insert(whatsappIntegrations).values({
+    await db.insert(integrations).values({
       id: createId(),
       accountId,
       provider: 'CLOUD',
@@ -626,29 +649,31 @@ export class WhatsappService {
     wamid: string,
     ack: number,
   ) {
+    const { messages, conversations } = await this.getTables();
     if (!wamid) return;
     const status = this.mapAckToStatus(ack);
     await db
-      .update(whatsappMessages)
+      .update(messages)
       .set({ status })
       .where(
         and(
-          eq(whatsappMessages.wamid, wamid),
-          eq(whatsappConversations.accountId, accountId),
+          eq(messages.wamid, wamid),
+          eq(conversations.accountId, accountId),
         ),
       )
-      .from(whatsappMessages)
+      .from(messages)
       .innerJoin(
-        whatsappConversations,
-        eq(whatsappMessages.conversationId, whatsappConversations.id),
+        conversations,
+        eq(messages.conversationId, conversations.id),
       );
   }
 
   async getCloudStatus(accountId: string) {
+    const { integrations } = await this.getTables();
     const existing = await db
       .select()
-      .from(whatsappIntegrations)
-      .where(eq(whatsappIntegrations.accountId, accountId))
+      .from(integrations)
+      .where(eq(integrations.accountId, accountId))
       .limit(1);
 
     if (!existing.length) {
@@ -659,17 +684,19 @@ export class WhatsappService {
   }
 
   async activateCloud(accountId: string) {
+    const { integrations } = await this.getTables();
     await db
-      .update(whatsappIntegrations)
+      .update(integrations)
       .set({ status: 'CONNECTED', updatedAt: new Date() })
-      .where(eq(whatsappIntegrations.accountId, accountId));
+      .where(eq(integrations.accountId, accountId));
 
     return { status: 'CONNECTED' };
   }
 
   async findIntegrationByPhoneNumberId(phoneNumberId: string) {
-    const integrations = await db.select().from(whatsappIntegrations);
-    for (const integration of integrations) {
+    const { integrations } = await this.getTables();
+    const list = await db.select().from(integrations);
+    for (const integration of list) {
       try {
         const payload = decryptPayload(
           integration.encryptedPayload,
@@ -685,8 +712,9 @@ export class WhatsappService {
   }
 
   async findIntegrationByVerifyToken(token: string) {
-    const integrations = await db.select().from(whatsappIntegrations);
-    for (const integration of integrations) {
+    const { integrations } = await this.getTables();
+    const list = await db.select().from(integrations);
+    for (const integration of list) {
       try {
         const payload = decryptPayload(
           integration.encryptedPayload,
@@ -720,6 +748,7 @@ export class WhatsappService {
   }
 
   async connectCloudFromMeta(accountId: string) {
+    const { integrations } = await this.getTables();
     const accessToken = await this.getMetaAccessToken(accountId);
     if (!accessToken) {
       return { error: 'META_TOKEN_NOT_FOUND' };
@@ -789,13 +818,14 @@ export class WhatsappService {
     value?: string | null,
     classification?: string | null,
   ) {
+    const { conversations } = await this.getTables();
     const existing = await db
       .select()
-      .from(whatsappConversations)
+      .from(conversations)
       .where(
         and(
-          eq(whatsappConversations.contactPhone, contactPhone),
-          eq(whatsappConversations.accountId, accountId),
+          eq(conversations.contactPhone, contactPhone),
+          eq(conversations.accountId, accountId),
         ),
       )
       .limit(1);
@@ -814,7 +844,7 @@ export class WhatsappService {
         nextPhoto = await this.fetchContactPhoto(accountId, contactJid);
       }
       await db
-        .update(whatsappConversations)
+        .update(conversations)
         .set({
           lastMessageAt: nextLast ?? new Date(),
           contactName: contactName ?? existing[0].contactName,
@@ -825,7 +855,7 @@ export class WhatsappService {
           classification: classification ?? existing[0].classification ?? null,
           updatedAt: new Date(),
         })
-        .where(eq(whatsappConversations.id, existing[0].id));
+        .where(eq(conversations.id, existing[0].id));
       return existing[0].id;
     }
 
@@ -834,7 +864,7 @@ export class WhatsappService {
     if (!resolvedPhoto && contactJid) {
       resolvedPhoto = await this.fetchContactPhoto(accountId, contactJid);
     }
-    await db.insert(whatsappConversations).values({
+    await db.insert(conversations).values({
       id: conversationId,
       accountId,
       contactPhone,
@@ -854,13 +884,14 @@ export class WhatsappService {
     contactPhone: string,
     contactName: string,
   ) {
+    const { conversations } = await this.getTables();
     await db
-      .update(whatsappConversations)
+      .update(conversations)
       .set({ contactName, updatedAt: new Date() })
       .where(
         and(
-          eq(whatsappConversations.accountId, accountId),
-          eq(whatsappConversations.contactPhone, contactPhone),
+          eq(conversations.accountId, accountId),
+          eq(conversations.contactPhone, contactPhone),
         ),
       );
   }
@@ -870,10 +901,11 @@ export class WhatsappService {
     conversationId: string,
     classification: string | null,
   ) {
+    const { conversations } = await this.getTables();
     const exists = await this.getConversationById(accountId, conversationId);
     if (!exists) throw new Error('Conversation not found');
     await db
-      .update(whatsappConversations)
+      .update(conversations)
       .set({
         classification:
           classification && classification.trim()
@@ -883,8 +915,8 @@ export class WhatsappService {
       })
       .where(
         and(
-          eq(whatsappConversations.id, conversationId),
-          eq(whatsappConversations.accountId, accountId),
+          eq(conversations.id, conversationId),
+          eq(conversations.accountId, accountId),
         ),
       );
     return { ok: true };
@@ -897,10 +929,11 @@ export class WhatsappService {
     source?: string | null,
     value?: string | null,
   ) {
+    const { conversations } = await this.getTables();
     const exists = await this.getConversationById(accountId, conversationId);
     if (!exists) throw new Error('Conversation not found');
     await db
-      .update(whatsappConversations)
+      .update(conversations)
       .set({
         stage: stage || 'entrando',
         source: source ?? exists.source ?? null,
@@ -909,8 +942,8 @@ export class WhatsappService {
       })
       .where(
         and(
-          eq(whatsappConversations.id, conversationId),
-          eq(whatsappConversations.accountId, accountId),
+          eq(conversations.id, conversationId),
+          eq(conversations.accountId, accountId),
         ),
       );
     return { ok: true };
@@ -922,10 +955,11 @@ export class WhatsappService {
     value: string | null,
     source?: string | null,
   ) {
+    const { conversations } = await this.getTables();
     const exists = await this.getConversationById(accountId, conversationId);
     if (!exists) throw new Error('Conversation not found');
     await db
-      .update(whatsappConversations)
+      .update(conversations)
       .set({
         value: value ?? null,
         source: source ?? exists.source ?? null,
@@ -933,8 +967,8 @@ export class WhatsappService {
       })
       .where(
         and(
-          eq(whatsappConversations.id, conversationId),
-          eq(whatsappConversations.accountId, accountId),
+          eq(conversations.id, conversationId),
+          eq(conversations.accountId, accountId),
         ),
       );
     return { ok: true };
@@ -950,6 +984,7 @@ export class WhatsappService {
     classification?: string | null;
   }) {
     const phone = this.sanitizeContactPhone(params.contactPhone || createId());
+    const { conversations } = await this.getTables();
     const conversationId = await this.upsertConversation(
       params.accountId,
       phone,
@@ -966,13 +1001,14 @@ export class WhatsappService {
   }
 
   async listPipeline(accountId: string) {
-    let rows: typeof whatsappConversations.$inferSelect[] = [];
+    const { conversations } = await this.getTables();
+    let rows: typeof conversations.$inferSelect[] = [];
     try {
       rows = await db
         .select()
-        .from(whatsappConversations)
-        .where(eq(whatsappConversations.accountId, accountId))
-        .orderBy(desc(whatsappConversations.lastMessageAt));
+        .from(conversations)
+        .where(eq(conversations.accountId, accountId))
+        .orderBy(desc(conversations.lastMessageAt));
     } catch (err) {
       console.error('[whatsapp] listPipeline failed', err);
       return [];
@@ -1043,6 +1079,7 @@ export class WhatsappService {
     replyToWamid?: string | null;
     classification?: string | null;
   }) {
+    const { conversations, messages } = await this.getTables();
     const contactPhone = this.sanitizeContactPhone(params.contactPhone);
     const conversationId = await this.upsertConversation(
       params.accountId,
@@ -1060,8 +1097,8 @@ export class WhatsappService {
     if (params.wamid) {
       const existingByWamid = await db
         .select({ id: whatsappMessages.id })
-        .from(whatsappMessages)
-        .where(eq(whatsappMessages.wamid, params.wamid))
+        .from(messages)
+        .where(eq(messages.wamid, params.wamid))
         .limit(1);
       if (existingByWamid.length) {
         return { conversationId, duplicated: true };
@@ -1072,14 +1109,14 @@ export class WhatsappService {
     const windowEnd = new Date(params.messageTimestamp.getTime() + 5000);
     const existing = await db
       .select({ id: whatsappMessages.id })
-      .from(whatsappMessages)
+      .from(messages)
       .where(
         and(
-          eq(whatsappMessages.conversationId, conversationId),
-          eq(whatsappMessages.direction, params.direction),
-          eq(whatsappMessages.body, params.body),
-          gt(whatsappMessages.messageTimestamp, windowStart),
-          lt(whatsappMessages.messageTimestamp, windowEnd),
+          eq(messages.conversationId, conversationId),
+          eq(messages.direction, params.direction),
+          eq(messages.body, params.body),
+          gt(messages.messageTimestamp, windowStart),
+          lt(messages.messageTimestamp, windowEnd),
         ),
       )
       .limit(1);
@@ -1088,7 +1125,7 @@ export class WhatsappService {
     }
 
     const messageId = createId();
-    await db.insert(whatsappMessages).values({
+    await db.insert(messages).values({
       id: messageId,
       conversationId,
       direction: params.direction,
@@ -1135,12 +1172,13 @@ export class WhatsappService {
   }
 
   async listConversations(accountId: string) {
+    const { conversations } = await this.getTables();
     try {
       return await db
         .select()
-        .from(whatsappConversations)
-        .where(eq(whatsappConversations.accountId, accountId))
-        .orderBy(desc(whatsappConversations.lastMessageAt));
+        .from(conversations)
+        .where(eq(conversations.accountId, accountId))
+        .orderBy(desc(conversations.lastMessageAt));
     } catch (err) {
       console.error('[whatsapp] listConversations failed', err);
       return [];
@@ -1148,11 +1186,12 @@ export class WhatsappService {
   }
 
   async listMessages(conversationId: string) {
+    const { messages } = await this.getTables();
     const rows = await db
       .select()
-      .from(whatsappMessages)
-      .where(eq(whatsappMessages.conversationId, conversationId))
-      .orderBy(whatsappMessages.messageTimestamp);
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.messageTimestamp);
 
     return rows.map((row) => {
       let mime: string | null = null;
@@ -1195,6 +1234,7 @@ export class WhatsappService {
   }
 
   async listMessagesForAccount(accountId: string, conversationId: string) {
+    const { conversations } = await this.getTables();
     const convo = await this.getConversationById(accountId, conversationId);
     if (!convo) return [];
     return this.listMessages(conversationId);
@@ -1204,14 +1244,15 @@ export class WhatsappService {
     accountId: string,
     contactPhone: string,
   ) {
+    const { conversations } = await this.getTables();
     const normalized = this.sanitizeContactPhone(contactPhone);
     const convo = await db
       .select({ id: whatsappConversations.id })
-      .from(whatsappConversations)
+      .from(conversations)
       .where(
         and(
-          eq(whatsappConversations.accountId, accountId),
-          eq(whatsappConversations.contactPhone, normalized),
+          eq(conversations.accountId, accountId),
+          eq(conversations.contactPhone, normalized),
         ),
       )
       .limit(1);
