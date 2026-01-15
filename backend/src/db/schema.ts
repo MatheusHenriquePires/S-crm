@@ -4,13 +4,14 @@ import {
   timestamp,
   pgEnum,
   uniqueIndex,
+  uuid,
 } from 'drizzle-orm/pg-core';
 
 export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER']);
 
 export const contacts = pgTable('contacts', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
   name: text('name'),
   phoneE164: text('phone_e164'),
   email: text('email'),
@@ -26,7 +27,7 @@ export const contacts = pgTable('contacts', {
 // Definimos duas variações para lidar com bancos legados (PascalCase) e novos (snake_case).
 // Usamos os mesmos nomes de propriedades para facilitar o uso dinâmico.
 export const accountsSnake = pgTable('accounts', {
-  id: text('id').primaryKey(), // vamos gerar cuid no app (ou pode usar uuid no banco)
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   ownerName: text('owner_name'),
   email: text('email').unique(),
@@ -40,7 +41,7 @@ export const accountsSnake = pgTable('accounts', {
 });
 
 export const accountsPascal = pgTable('Account', {
-  id: text('id').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   ownerName: text('ownerName'),
   email: text('email').unique(),
@@ -54,8 +55,8 @@ export const accountsPascal = pgTable('Account', {
 });
 
 export const usersSnake = pgTable('users', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(), // depois colocamos FK se quiser
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
@@ -70,8 +71,8 @@ export const usersSnake = pgTable('users', {
 });
 
 export const usersPascal = pgTable('User', {
-  id: text('id').primaryKey(),
-  accountId: text('accountId').notNull(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('accountId').notNull(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   passwordHash: text('passwordHash').notNull(),
@@ -93,8 +94,8 @@ export const whatsappStatusEnum = pgEnum('WhatsappIntegrationStatus', [
 
 // Banco real: whatsapp_connections (mais campos que o código usa).
 export const whatsappConnections = pgTable('whatsapp_connections', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
   type: text('type'), // qr|cloud
   status: whatsappStatusEnum('status').notNull().default('PENDING'),
   wabaId: text('waba_id'),
@@ -119,9 +120,9 @@ export const messageDirectionEnum = pgEnum('MessageDirection', [
 
 // Banco real: conversations (sem contact_phone/contact_name)
 export const whatsappConversations = pgTable('conversations', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(),
-  contactId: text('contact_id'),
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  contactId: uuid('contact_id'),
   channel: text('channel'),
   stage: text('stage').default('entrando'),
   classification: text('classification'),
@@ -141,9 +142,9 @@ export const whatsappConversations = pgTable('conversations', {
 export const whatsappMessages = pgTable(
   'messages',
   {
-    id: text('id').primaryKey(),
-    accountId: text('account_id'),
-    conversationId: text('conversation_id').notNull(),
+    id: uuid('id').defaultRandom().primaryKey(),
+    accountId: uuid('account_id'),
+    conversationId: uuid('conversation_id').notNull(),
     direction: messageDirectionEnum('direction').notNull(),
     type: text('type'),
     externalMessageId: text('external_message_id'),
