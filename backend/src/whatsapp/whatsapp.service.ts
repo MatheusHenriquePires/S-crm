@@ -343,6 +343,11 @@ export class WhatsappService {
     fs.mkdirSync(sessionDir, { recursive: true });
 
     const logger = pino({ level: 'info' });
+    const executablePath =
+      process.env.CHROMIUM_PATH ||
+      process.env.CHROME_PATH ||
+      process.env.PUPPETEER_EXECUTABLE_PATH ||
+      undefined;
     const waitForQr = new Promise<ConnectionState>((resolve) => {
       wppconnect
         .create({
@@ -354,6 +359,7 @@ export class WhatsappService {
           logQR: false,
           puppeteerOptions: {
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            executablePath,
           },
           catchQR: (base64Qr) => {
             const qrCode = base64Qr.startsWith('data:image')
