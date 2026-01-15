@@ -117,14 +117,24 @@ export class WhatsappService {
       };
     }
 
-    const contactId = createId();
-    await db.insert(contacts).values({
-      id: contactId,
-      accountId,
-      name: contactName ?? null,
-      phoneE164: safePhone,
-    });
-    return { contactId, phone: safePhone, name: contactName ?? null };
+    const inserted = await db
+      .insert(contacts)
+      .values({
+        accountId,
+        name: contactName ?? null,
+        phoneE164: safePhone,
+      })
+      .returning({
+        id: contacts.id,
+        phone: contacts.phoneE164,
+        name: contacts.name,
+      });
+    const row = inserted[0];
+    return {
+      contactId: row?.id ?? safePhone,
+      phone: row?.phone ?? safePhone,
+      name: row?.name ?? contactName ?? null,
+    };
   }
 
   private cleanupSocket(accountId: string) {
@@ -681,7 +691,6 @@ export class WhatsappService {
     }
 
     await db.insert(integrations).values({
-      id: createId(),
       accountId,
       provider: 'CLOUD',
       status: 'PENDING',
@@ -895,20 +904,21 @@ export class WhatsappService {
       return existing[0].id;
     }
 
-    const conversationId = createId();
-    await db.insert(conversations).values({
-      id: conversationId,
-      accountId,
-      contactId,
-      channel: 'WHATSAPP',
-      stage: stageValue,
-      classification: classification ?? null,
-      valueCents: valueCents ?? '0',
-      currency: 'BRL',
-      isOpen: true,
-      lastMessageAt: lastMessageAt ?? new Date(),
-    });
-    return conversationId;
+    const inserted = await db
+      .insert(conversations)
+      .values({
+        accountId,
+        contactId,
+        channel: 'WHATSAPP',
+        stage: stageValue,
+        classification: classification ?? null,
+        valueCents: valueCents ?? '0',
+        currency: 'BRL',
+        isOpen: true,
+        lastMessageAt: lastMessageAt ?? new Date(),
+      })
+      .returning({ id: conversations.id });
+    return inserted[0]?.id ?? contactId;
   }
 
   async updateConversationName(
@@ -1166,22 +1176,24 @@ export class WhatsappService {
       return { conversationId, duplicated: true };
     }
 
-    const messageId = createId();
-    await db.insert(messages).values({
-      id: messageId,
-      conversationId,
-      accountId: params.accountId,
-      direction: params.direction,
-      text: params.body,
-      createdAt: params.messageTimestamp,
-      rawPayload: params.rawPayload,
-      externalMessageId: params.wamid ?? null,
-      mimeType: params.mimetype ?? null,
-      fileName: null,
-      fileSizeBytes: null,
-      mediaId: null,
-      mediaUrl: null,
-    });
+    const inserted = await db
+      .insert(messages)
+      .values({
+        conversationId,
+        accountId: params.accountId,
+        direction: params.direction,
+        text: params.body,
+        createdAt: params.messageTimestamp,
+        rawPayload: params.rawPayload,
+        externalMessageId: params.wamid ?? null,
+        mimeType: params.mimetype ?? null,
+        fileName: null,
+        fileSizeBytes: null,
+        mediaId: null,
+        mediaUrl: null,
+      })
+      .returning({ id: messages.id });
+    const messageId = inserted[0]?.id ?? '';
 
     this.emitEvent(params.accountId, {
       type: 'message',
