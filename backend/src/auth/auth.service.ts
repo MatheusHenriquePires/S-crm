@@ -18,7 +18,7 @@ import { LoginDto } from './dto/login.dto';
 @Injectable()
 export class AuthService {
   private readonly jwtSecret: string;
-  private readonly accessExpiresIn = 60 * 15; // 15 minutos
+  private readonly accessExpiresIn: string | number;
   private readonly saltRounds = Number(process.env.BCRYPT_ROUNDS ?? 12);
 
   constructor(private jwt: JwtService) {
@@ -26,6 +26,8 @@ export class AuthService {
     if (!this.jwtSecret) {
       throw new Error('JWT_SECRET is not set');
     }
+    // Permite configurar via env (ex.: "7d"); default: 7 dias
+    this.accessExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
   }
 
   // ===============================
