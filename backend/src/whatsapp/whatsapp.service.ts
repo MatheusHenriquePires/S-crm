@@ -50,14 +50,12 @@ export class WhatsappService {
   private readonly startPromises = new Map<string, Promise<ConnectionState>>();
   private readonly recentMessageIds = new Map<string, Map<string, number>>();
   private readonly historyProcessing = new Set<string>();
-  private tablesPromise:
-    | Promise<{
-        conversations: any;
-        messages: any;
-        integrations: any;
-        contacts: any;
-      }>
-    | null = null;
+  private tablesPromise: Promise<{
+    conversations: any;
+    messages: any;
+    integrations: any;
+    contacts: any;
+  }> | null = null;
 
   private async getTables() {
     if (!this.tablesPromise) {
@@ -539,9 +537,8 @@ export class WhatsappService {
         })
         .catch((error) => {
           const msg =
-            (error && typeof (error as any).message === 'string'
-              ? (error as any).message
-              : '') || '';
+            (error && typeof error.message === 'string' ? error.message : '') ||
+            '';
           const reason = /chromium|chrome/i.test(msg)
             ? 'chromium_not_found'
             : 'create_failed';
@@ -709,16 +706,10 @@ export class WhatsappService {
       .update(messages)
       .set({ status })
       .where(
-        and(
-          eq(messages.wamid, wamid),
-          eq(conversations.accountId, accountId),
-        ),
+        and(eq(messages.wamid, wamid), eq(conversations.accountId, accountId)),
       )
       .from(messages)
-      .innerJoin(
-        conversations,
-        eq(messages.conversationId, conversations.id),
-      );
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id));
   }
 
   async getCloudStatus(accountId: string) {
@@ -801,7 +792,6 @@ export class WhatsappService {
   }
 
   async connectCloudFromMeta(accountId: string) {
-    const { integrations } = await this.getTables();
     const accessToken = await this.getMetaAccessToken(accountId);
     if (!accessToken) {
       return { error: 'META_TOKEN_NOT_FOUND' };
@@ -1126,7 +1116,7 @@ export class WhatsappService {
     classification?: string | null;
     mimetype?: string | null;
   }) {
-    const { conversations, messages } = await this.getTables();
+    const { messages } = await this.getTables();
     const contactPhone = params.contactPhone
       ? this.sanitizeContactPhone(params.contactPhone)
       : null;
@@ -1280,7 +1270,10 @@ export class WhatsappService {
 
     return rows.map((row) => {
       const mime = row.mimeType || null;
-      const hasMedia = Boolean(row.mediaUrl || (mime && (mime.startsWith('audio') || mime.startsWith('image'))));
+      const hasMedia = Boolean(
+        row.mediaUrl ||
+        (mime && (mime.startsWith('audio') || mime.startsWith('image'))),
+      );
       return {
         ...row,
         body: row.text || '',
@@ -1294,7 +1287,6 @@ export class WhatsappService {
   }
 
   async listMessagesForAccount(accountId: string, conversationId: string) {
-    const { conversations } = await this.getTables();
     const convo = await this.getConversationById(accountId, conversationId);
     if (!convo) return [];
     return this.listMessages(conversationId);
@@ -1465,10 +1457,7 @@ export class WhatsappService {
         accountId: conversations.accountId,
       })
       .from(messages)
-      .innerJoin(
-        conversations,
-        eq(messages.conversationId, conversations.id),
-      )
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
       .where(
         and(
           eq(messages.id, messageId),
@@ -1488,10 +1477,7 @@ export class WhatsappService {
           accountId: conversations.accountId,
         })
         .from(messages)
-        .innerJoin(
-          conversations,
-          eq(messages.conversationId, conversations.id),
-        )
+        .innerJoin(conversations, eq(messages.conversationId, conversations.id))
         .where(
           and(
             eq(messages.id, messageId),

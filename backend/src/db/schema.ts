@@ -162,7 +162,9 @@ export const whatsappMessages = pgTable(
       .notNull(),
   },
   (table) => ({
-    wamidIdx: uniqueIndex('whatsapp_message_wamid_idx').on(table.externalMessageId),
+    wamidIdx: uniqueIndex('whatsapp_message_wamid_idx').on(
+      table.externalMessageId,
+    ),
   }),
 );
 

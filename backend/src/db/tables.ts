@@ -29,23 +29,14 @@ async function detectFlavor(): Promise<Flavor> {
       detectedFlavor = 'snake';
     }
   } catch (err) {
-    console.error('Table flavor detection failed, defaulting to snake_case', err);
+    console.error(
+      'Table flavor detection failed, defaulting to snake_case',
+      err,
+    );
     detectedFlavor = 'snake';
   }
 
   return detectedFlavor;
-}
-
-async function detectConversationFlavor(): Promise<Flavor> {
-  return 'snake';
-}
-
-async function detectMessageFlavor(): Promise<Flavor> {
-  return 'snake';
-}
-
-async function detectIntegrationFlavor(): Promise<Flavor> {
-  return 'snake';
 }
 
 export async function getAccountsTable() {

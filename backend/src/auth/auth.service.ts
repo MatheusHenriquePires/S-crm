@@ -120,7 +120,7 @@ export class AuthService {
   // ===============================
   async login(dto: LoginDto) {
     const users = await getUsersTable();
-    let found: typeof users.$inferSelect[] = [];
+    let found: (typeof users.$inferSelect)[] = [];
     try {
       found = await db
         .select()
