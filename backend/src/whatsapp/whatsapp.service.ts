@@ -84,6 +84,49 @@ export class WhatsappService {
     return 'pending';
   }
 
+  private sanitizePhoneE164(value: string) {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.startsWith('+') ? digits : `+${digits}`;
+  }
+
+  private async ensureContact(
+    accountId: string,
+    contactPhone?: string | null,
+    contactName?: string | null,
+  ) {
+    const { contacts } = await this.getTables();
+    const phone = contactPhone ? this.sanitizePhoneE164(contactPhone) : null;
+    const safePhone = phone && phone.trim() ? phone : `+${createId()}`;
+
+    const existing = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.accountId, accountId),
+          eq(contacts.phoneE164, safePhone),
+        ),
+      )
+      .limit(1);
+    if (existing.length) {
+      return {
+        contactId: existing[0].id,
+        phone: existing[0].phoneE164,
+        name: existing[0].name,
+      };
+    }
+
+    const contactId = createId();
+    await db.insert(contacts).values({
+      id: contactId,
+      accountId,
+      name: contactName ?? null,
+      phoneE164: safePhone,
+    });
+    return { contactId, phone: safePhone, name: contactName ?? null };
+  }
+
   private cleanupSocket(accountId: string) {
     const sock = this.sockets.get(accountId);
     if (sock) {
@@ -812,14 +855,10 @@ export class WhatsappService {
 
   async upsertConversation(
     accountId: string,
-    contactPhone: string,
-    contactName?: string | null,
+    contactId: string,
     lastMessageAt?: Date,
-    contactJid?: string | null,
-    contactPhotoUrl?: string | null,
     stage?: string | null,
-    source?: string | null,
-    value?: string | null,
+    valueCents?: string | null,
     classification?: string | null,
   ) {
     const { conversations } = await this.getTables();
@@ -828,12 +867,13 @@ export class WhatsappService {
       .from(conversations)
       .where(
         and(
-          eq(conversations.contactPhone, contactPhone),
+          eq(conversations.contactId, contactId),
           eq(conversations.accountId, accountId),
         ),
       )
       .limit(1);
 
+    const stageValue = stage || 'NOVO';
     if (existing.length) {
       const currentLast = existing[0].lastMessageAt;
       const nextLast =
@@ -841,21 +881,13 @@ export class WhatsappService {
           ? lastMessageAt > currentLast
             ? lastMessageAt
             : currentLast
-          : currentLast;
-      const storedPhoto = existing[0].contactPhotoUrl;
-      let nextPhoto = storedPhoto ?? contactPhotoUrl ?? null;
-      if (!nextPhoto && contactJid) {
-        nextPhoto = await this.fetchContactPhoto(accountId, contactJid);
-      }
+          : lastMessageAt || currentLast;
       await db
         .update(conversations)
         .set({
           lastMessageAt: nextLast ?? new Date(),
-          contactName: contactName ?? existing[0].contactName,
-          contactPhotoUrl: nextPhoto ?? storedPhoto ?? null,
-          stage: existing[0].stage ?? stage ?? 'entrando',
-          source: existing[0].source ?? source ?? null,
-          value: existing[0].value ?? value ?? null,
+          stage: existing[0].stage || stageValue,
+          valueCents: valueCents ?? existing[0].valueCents ?? '0',
           classification: classification ?? existing[0].classification ?? null,
           updatedAt: new Date(),
         })
@@ -864,20 +896,16 @@ export class WhatsappService {
     }
 
     const conversationId = createId();
-    let resolvedPhoto = contactPhotoUrl ?? null;
-    if (!resolvedPhoto && contactJid) {
-      resolvedPhoto = await this.fetchContactPhoto(accountId, contactJid);
-    }
     await db.insert(conversations).values({
       id: conversationId,
       accountId,
-      contactPhone,
-      contactName: contactName ?? null,
-      contactPhotoUrl: resolvedPhoto,
-      stage: stage ?? 'entrando',
-      source: source ?? null,
-      value: value ?? null,
+      contactId,
+      channel: 'WHATSAPP',
+      stage: stageValue,
       classification: classification ?? null,
+      valueCents: valueCents ?? '0',
+      currency: 'BRL',
+      isOpen: true,
       lastMessageAt: lastMessageAt ?? new Date(),
     });
     return conversationId;
@@ -930,8 +958,6 @@ export class WhatsappService {
     accountId: string,
     conversationId: string,
     stage: string | null,
-    source?: string | null,
-    value?: string | null,
   ) {
     const { conversations } = await this.getTables();
     const exists = await this.getConversationById(accountId, conversationId);
@@ -939,9 +965,7 @@ export class WhatsappService {
     await db
       .update(conversations)
       .set({
-        stage: stage || 'entrando',
-        source: source ?? exists.source ?? null,
-        value: value ?? exists.value ?? null,
+        stage: stage || exists.stage || 'NOVO',
         updatedAt: new Date(),
       })
       .where(
@@ -957,16 +981,18 @@ export class WhatsappService {
     accountId: string,
     conversationId: string,
     value: string | null,
-    source?: string | null,
   ) {
     const { conversations } = await this.getTables();
     const exists = await this.getConversationById(accountId, conversationId);
     if (!exists) throw new Error('Conversation not found');
+    const valueCents =
+      value && value.trim()
+        ? String(Number(value.replace(/[^\d.-]/g, '')) * 100 || 0)
+        : '0';
     await db
       .update(conversations)
       .set({
-        value: value ?? null,
-        source: source ?? exists.source ?? null,
+        valueCents,
         updatedAt: new Date(),
       })
       .where(
@@ -983,21 +1009,20 @@ export class WhatsappService {
     contactName: string;
     contactPhone?: string | null;
     stage?: string | null;
-    source?: string | null;
     value?: string | null;
     classification?: string | null;
   }) {
     const phone = this.sanitizeContactPhone(params.contactPhone || createId());
-    const { conversations } = await this.getTables();
-    const conversationId = await this.upsertConversation(
+    const contact = await this.ensureContact(
       params.accountId,
       phone,
       params.contactName,
+    );
+    const conversationId = await this.upsertConversation(
+      params.accountId,
+      contact.contactId,
       new Date(),
-      null,
-      null,
-      params.stage ?? 'entrando',
-      params.source ?? null,
+      params.stage ?? 'NOVO',
       params.value ?? null,
       params.classification ?? null,
     );
@@ -1051,7 +1076,6 @@ export class WhatsappService {
         .map((r) => ({
           id: r.id,
           name: r.contactName || r.contactPhone || 'Contato',
-          source: r.source,
           value: r.valueCents,
           classification: r.classification,
           lastMessageAt: r.lastMessageAt,
@@ -1093,6 +1117,7 @@ export class WhatsappService {
     status?: string | null;
     replyToWamid?: string | null;
     classification?: string | null;
+    mimetype?: string | null;
   }) {
     const { conversations, messages } = await this.getTables();
     const contactPhone = params.contactPhone
@@ -1106,13 +1131,7 @@ export class WhatsappService {
     const conversationId = await this.upsertConversation(
       params.accountId,
       contact.contactId,
-      params.contactName,
       params.messageTimestamp,
-      params.contactJid ?? null,
-      params.contactPhotoUrl ?? null,
-      null,
-      null,
-      null,
       params.classification ?? null,
     );
 
@@ -1500,11 +1519,10 @@ export class WhatsappService {
     const buffer: Buffer = await client.decryptFile(payload);
     return { buffer, mimetype };
   }
-}
   private sanitizePhoneE164(value: string) {
     const digits = value.replace(/\D/g, '');
     if (!digits) return '';
-    return digits.startsWith('+' ) ? digits : `+${digits}`;
+    return digits.startsWith('+') ? digits : `+${digits}`;
   }
 
   private async ensureContact(
@@ -1513,22 +1531,25 @@ export class WhatsappService {
     contactName?: string | null,
   ) {
     const { contacts } = await this.getTables();
-    const phone = contactPhone ? this.sanitizePhoneE164(contactPhone) : null;
+    const phone = contactPhone ? this.sanitizePhoneE164(contactPhone) : '';
+    const safePhone = phone && phone.trim() ? phone : `+${createId()}`;
 
-    if (phone) {
-      const existing = await db
-        .select()
-        .from(contacts)
-        .where(
-          and(
-            eq(contacts.accountId, accountId),
-            eq(contacts.phoneE164, phone),
-          ),
-        )
-        .limit(1);
-      if (existing.length) {
-        return { contactId: existing[0].id, phone: existing[0].phoneE164, name: existing[0].name };
-      }
+    const existing = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.accountId, accountId),
+          eq(contacts.phoneE164, safePhone),
+        ),
+      )
+      .limit(1);
+    if (existing.length) {
+      return {
+        contactId: existing[0].id,
+        phone: existing[0].phoneE164,
+        name: existing[0].name,
+      };
     }
 
     const contactId = createId();
@@ -1536,7 +1557,8 @@ export class WhatsappService {
       id: contactId,
       accountId,
       name: contactName ?? null,
-      phoneE164: phone,
+      phoneE164: safePhone,
     });
-    return { contactId, phone, name: contactName ?? null };
+    return { contactId, phone: safePhone, name: contactName ?? null };
   }
+}
