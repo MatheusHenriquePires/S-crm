@@ -4,6 +4,7 @@ import {
   accountsSnake,
   usersPascal,
   usersSnake,
+  contacts,
   whatsappConversations,
   whatsappMessages,
   whatsappConnections,
@@ -55,6 +56,10 @@ export async function getAccountsTable() {
 export async function getUsersTable() {
   const flavor = await detectFlavor();
   return flavor === 'pascal' ? usersPascal : usersSnake;
+}
+
+export async function getContactsTable() {
+  return contacts;
 }
 
 export async function getConversationsTable() {

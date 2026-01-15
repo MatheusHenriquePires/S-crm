@@ -8,6 +8,21 @@ import {
 
 export const userRoleEnum = pgEnum('UserRole', ['ADMIN', 'MEMBER']);
 
+export const contacts = pgTable('contacts', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  name: text('name'),
+  phoneE164: text('phone_e164'),
+  email: text('email'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 // Definimos duas variações para lidar com bancos legados (PascalCase) e novos (snake_case).
 // Usamos os mesmos nomes de propriedades para facilitar o uso dinâmico.
 export const accountsSnake = pgTable('accounts', {

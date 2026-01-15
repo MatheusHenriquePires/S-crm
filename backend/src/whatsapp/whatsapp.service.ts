@@ -11,6 +11,7 @@ import {
   getConversationsTable,
   getMessagesTable,
   getWhatsappIntegrationsTable,
+  getContactsTable,
 } from '../db/tables';
 import { decryptPayload, encryptPayload } from './crypto';
 import { createId } from '@paralleldrive/cuid2';
@@ -54,6 +55,7 @@ export class WhatsappService {
         conversations: any;
         messages: any;
         integrations: any;
+        contacts: any;
       }>
     | null = null;
 
@@ -63,10 +65,12 @@ export class WhatsappService {
         getConversationsTable(),
         getMessagesTable(),
         getWhatsappIntegrationsTable(),
-      ]).then(([conversations, messages, integrations]) => ({
+        getContactsTable(),
+      ]).then(([conversations, messages, integrations, contacts]) => ({
         conversations,
         messages,
         integrations,
+        contacts,
       }));
     }
     return this.tablesPromise;
@@ -1001,12 +1005,23 @@ export class WhatsappService {
   }
 
   async listPipeline(accountId: string) {
-    const { conversations } = await this.getTables();
-    let rows: typeof conversations.$inferSelect[] = [];
+    const { conversations, contacts } = await this.getTables();
+    let rows: any[] = [];
     try {
       rows = await db
-        .select()
+        .select({
+          id: conversations.id,
+          accountId: conversations.accountId,
+          contactId: conversations.contactId,
+          stage: conversations.stage,
+          classification: conversations.classification,
+          valueCents: conversations.valueCents,
+          lastMessageAt: conversations.lastMessageAt,
+          contactName: contacts.name,
+          contactPhone: contacts.phoneE164,
+        })
         .from(conversations)
+        .leftJoin(contacts, eq(conversations.contactId, contacts.id))
         .where(eq(conversations.accountId, accountId))
         .orderBy(desc(conversations.lastMessageAt));
     } catch (err) {
@@ -1035,9 +1050,9 @@ export class WhatsappService {
         .filter((r) => (r.stage || 'entrando') === stage)
         .map((r) => ({
           id: r.id,
-          name: r.contactName || this.sanitizeContactPhone(r.contactPhone),
+          name: r.contactName || r.contactPhone || 'Contato',
           source: r.source,
-          value: r.value,
+          value: r.valueCents,
           classification: r.classification,
           lastMessageAt: r.lastMessageAt,
         }));
@@ -1066,7 +1081,7 @@ export class WhatsappService {
 
   async saveMessage(params: {
     accountId: string;
-    contactPhone: string;
+    contactPhone?: string | null;
     contactName?: string | null;
     contactJid?: string | null;
     contactPhotoUrl?: string | null;
@@ -1080,10 +1095,17 @@ export class WhatsappService {
     classification?: string | null;
   }) {
     const { conversations, messages } = await this.getTables();
-    const contactPhone = this.sanitizeContactPhone(params.contactPhone);
-    const conversationId = await this.upsertConversation(
+    const contactPhone = params.contactPhone
+      ? this.sanitizeContactPhone(params.contactPhone)
+      : null;
+    const contact = await this.ensureContact(
       params.accountId,
       contactPhone,
+      params.contactName ?? null,
+    );
+    const conversationId = await this.upsertConversation(
+      params.accountId,
+      contact.contactId,
       params.contactName,
       params.messageTimestamp,
       params.contactJid ?? null,
@@ -1094,11 +1116,12 @@ export class WhatsappService {
       params.classification ?? null,
     );
 
+    // messages table nao tem wamid unico; usamos external_message_id se vier
     if (params.wamid) {
       const existingByWamid = await db
         .select({ id: messages.id })
         .from(messages)
-        .where(eq(messages.wamid, params.wamid))
+        .where(eq(messages.externalMessageId, params.wamid))
         .limit(1);
       if (existingByWamid.length) {
         return { conversationId, duplicated: true };
@@ -1114,9 +1137,9 @@ export class WhatsappService {
         and(
           eq(messages.conversationId, conversationId),
           eq(messages.direction, params.direction),
-          eq(messages.body, params.body),
-          gt(messages.messageTimestamp, windowStart),
-          lt(messages.messageTimestamp, windowEnd),
+          eq(messages.text, params.body),
+          gt(messages.createdAt, windowStart),
+          lt(messages.createdAt, windowEnd),
         ),
       )
       .limit(1);
@@ -1128,13 +1151,17 @@ export class WhatsappService {
     await db.insert(messages).values({
       id: messageId,
       conversationId,
+      accountId: params.accountId,
       direction: params.direction,
-      body: params.body,
-      messageTimestamp: params.messageTimestamp,
+      text: params.body,
+      createdAt: params.messageTimestamp,
       rawPayload: params.rawPayload,
-      wamid: params.wamid ?? null,
-      status: params.status ?? 'sent',
-      replyToWamid: params.replyToWamid ?? null,
+      externalMessageId: params.wamid ?? null,
+      mimeType: params.mimetype ?? null,
+      fileName: null,
+      fileSizeBytes: null,
+      mediaId: null,
+      mediaUrl: null,
     });
 
     this.emitEvent(params.accountId, {
@@ -1172,13 +1199,43 @@ export class WhatsappService {
   }
 
   async listConversations(accountId: string) {
-    const { conversations } = await this.getTables();
+    const { conversations, contacts } = await this.getTables();
     try {
-      return await db
-        .select()
+      const rows = await db
+        .select({
+          id: conversations.id,
+          accountId: conversations.accountId,
+          contactId: conversations.contactId,
+          stage: conversations.stage,
+          classification: conversations.classification,
+          valueCents: conversations.valueCents,
+          currency: conversations.currency,
+          isOpen: conversations.isOpen,
+          lastMessageAt: conversations.lastMessageAt,
+          createdAt: conversations.createdAt,
+          updatedAt: conversations.updatedAt,
+          contactName: contacts.name,
+          contactPhone: contacts.phoneE164,
+        })
         .from(conversations)
+        .leftJoin(contacts, eq(conversations.contactId, contacts.id))
         .where(eq(conversations.accountId, accountId))
         .orderBy(desc(conversations.lastMessageAt));
+
+      return rows.map((row) => ({
+        id: row.id,
+        accountId: row.accountId,
+        contactId: row.contactId,
+        contactName: row.contactName ?? null,
+        contactPhone: row.contactPhone ?? '',
+        stage: row.stage,
+        classification: row.classification,
+        value: row.valueCents,
+        lastMessageAt: row.lastMessageAt,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        contactPhotoUrl: null,
+      }));
     } catch (err) {
       console.error('[whatsapp] listConversations failed', err);
       return [];
@@ -1191,44 +1248,19 @@ export class WhatsappService {
       .select()
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.messageTimestamp);
+      .orderBy(messages.createdAt);
 
     return rows.map((row) => {
-      let mime: string | null = null;
-      let duration: number | null = null;
-      let hasMedia = false;
-      try {
-        const payload = JSON.parse(row.rawPayload || '{}');
-        const type = payload?.type;
-        if (
-          type === 'ptt' ||
-          type === 'audio' ||
-          type === 'image' ||
-          type === 'sticker' ||
-          payload?.mimetype?.startsWith?.('audio') ||
-          payload?.mimetype?.startsWith?.('image')
-        ) {
-          hasMedia = true;
-          mime =
-            typeof payload?.mimetype === 'string'
-              ? payload.mimetype
-              : type === 'sticker'
-                ? 'image/webp'
-                : null;
-          const dur =
-            typeof payload?.duration === 'string'
-              ? Number(payload.duration)
-              : payload?.duration;
-          duration = Number.isFinite(dur) ? Number(dur) : null;
-        }
-      } catch {
-        // ignore parse errors
-      }
+      const mime = row.mimeType || null;
+      const hasMedia = Boolean(row.mediaUrl || (mime && (mime.startsWith('audio') || mime.startsWith('image'))));
       return {
         ...row,
-        hasMedia,
+        body: row.text || '',
+        messageTimestamp: row.createdAt,
         mimetype: mime,
-        duration,
+        hasMedia,
+        status: null,
+        replyToWamid: null,
       };
     });
   }
@@ -1267,10 +1299,20 @@ export class WhatsappService {
   }
 
   private async getConversationById(accountId: string, conversationId: string) {
-    const { conversations } = await this.getTables();
+    const { conversations, contacts } = await this.getTables();
     const existing = await db
-      .select()
+      .select({
+        id: conversations.id,
+        accountId: conversations.accountId,
+        contactId: conversations.contactId,
+        contactName: contacts.name,
+        contactPhone: contacts.phoneE164,
+        stage: conversations.stage,
+        classification: conversations.classification,
+        lastMessageAt: conversations.lastMessageAt,
+      })
       .from(conversations)
+      .leftJoin(contacts, eq(conversations.contactId, contacts.id))
       .where(
         and(
           eq(conversations.id, conversationId),
@@ -1459,3 +1501,42 @@ export class WhatsappService {
     return { buffer, mimetype };
   }
 }
+  private sanitizePhoneE164(value: string) {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.startsWith('+' ) ? digits : `+${digits}`;
+  }
+
+  private async ensureContact(
+    accountId: string,
+    contactPhone?: string | null,
+    contactName?: string | null,
+  ) {
+    const { contacts } = await this.getTables();
+    const phone = contactPhone ? this.sanitizePhoneE164(contactPhone) : null;
+
+    if (phone) {
+      const existing = await db
+        .select()
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.accountId, accountId),
+            eq(contacts.phoneE164, phone),
+          ),
+        )
+        .limit(1);
+      if (existing.length) {
+        return { contactId: existing[0].id, phone: existing[0].phoneE164, name: existing[0].name };
+      }
+    }
+
+    const contactId = createId();
+    await db.insert(contacts).values({
+      id: contactId,
+      accountId,
+      name: contactName ?? null,
+      phoneE164: phone,
+    });
+    return { contactId, phone, name: contactName ?? null };
+  }
