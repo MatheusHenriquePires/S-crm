@@ -32,6 +32,7 @@ async function login() {
     }
     if (accountId) {
       onboarding.setAccountCreated(accountId)
+      await syncWhatsappStatus(accountId)
     }
     onboarding.setUserCreated()
     router.push('/')
@@ -39,6 +40,23 @@ async function login() {
     error.value = 'Email ou senha invalidos.'
   } finally {
     loading.value = false
+  }
+}
+
+async function syncWhatsappStatus(accountId: string) {
+  try {
+    const { data } = await http.get('/whatsapp/status', {
+      params: { accountId },
+    })
+    const status = (data?.status || '').toString().toLowerCase()
+    const connected = status === 'connected' || status === 'main' || status === 'normal'
+    if (connected) {
+      onboarding.setWppConnected()
+    } else {
+      onboarding.setWppDisconnected()
+    }
+  } catch {
+    onboarding.setWppDisconnected()
   }
 }
 
