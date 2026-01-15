@@ -4,6 +4,12 @@ import {
   accountsSnake,
   usersPascal,
   usersSnake,
+  whatsappConversationsCamel,
+  whatsappConversationsSnake,
+  whatsappMessagesCamel,
+  whatsappMessagesSnake,
+  whatsappIntegrationsCamel,
+  whatsappIntegrationsSnake,
 } from './schema';
 
 type Flavor = 'snake' | 'pascal';

@@ -1096,7 +1096,7 @@ export class WhatsappService {
 
     if (params.wamid) {
       const existingByWamid = await db
-        .select({ id: whatsappMessages.id })
+        .select({ id: messages.id })
         .from(messages)
         .where(eq(messages.wamid, params.wamid))
         .limit(1);
@@ -1108,7 +1108,7 @@ export class WhatsappService {
     const windowStart = new Date(params.messageTimestamp.getTime() - 5000);
     const windowEnd = new Date(params.messageTimestamp.getTime() + 5000);
     const existing = await db
-      .select({ id: whatsappMessages.id })
+      .select({ id: messages.id })
       .from(messages)
       .where(
         and(
@@ -1244,10 +1244,10 @@ export class WhatsappService {
     accountId: string,
     contactPhone: string,
   ) {
-    const { conversations } = await this.getTables();
+    const { conversations, messages } = await this.getTables();
     const normalized = this.sanitizeContactPhone(contactPhone);
     const convo = await db
-      .select({ id: whatsappConversations.id })
+      .select({ id: conversations.id })
       .from(conversations)
       .where(
         and(
@@ -1258,22 +1258,23 @@ export class WhatsappService {
       .limit(1);
     if (!convo.length) return null;
     const latest = await db
-      .select({ messageTimestamp: whatsappMessages.messageTimestamp })
-      .from(whatsappMessages)
-      .where(eq(whatsappMessages.conversationId, convo[0].id))
-      .orderBy(desc(whatsappMessages.messageTimestamp))
+      .select({ messageTimestamp: messages.messageTimestamp })
+      .from(messages)
+      .where(eq(messages.conversationId, convo[0].id))
+      .orderBy(desc(messages.messageTimestamp))
       .limit(1);
     return latest.length ? latest[0].messageTimestamp : null;
   }
 
   private async getConversationById(accountId: string, conversationId: string) {
+    const { conversations } = await this.getTables();
     const existing = await db
       .select()
-      .from(whatsappConversations)
+      .from(conversations)
       .where(
         and(
-          eq(whatsappConversations.id, conversationId),
-          eq(whatsappConversations.accountId, accountId),
+          eq(conversations.id, conversationId),
+          eq(conversations.accountId, accountId),
         ),
       )
       .limit(1);
@@ -1281,11 +1282,12 @@ export class WhatsappService {
   }
 
   private async getLastMessageJid(conversationId: string) {
+    const { messages } = await this.getTables();
     const latest = await db
       .select()
-      .from(whatsappMessages)
-      .where(eq(whatsappMessages.conversationId, conversationId))
-      .orderBy(desc(whatsappMessages.messageTimestamp))
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.messageTimestamp))
       .limit(1);
     if (!latest.length) return null;
     try {
@@ -1383,23 +1385,24 @@ export class WhatsappService {
     conversationId: string,
     messageId: string,
   ) {
+    const { conversations, messages } = await this.getTables();
     const message = await db
       .select({
-        id: whatsappMessages.id,
-        rawPayload: whatsappMessages.rawPayload,
-        conversationId: whatsappMessages.conversationId,
-        accountId: whatsappConversations.accountId,
+        id: messages.id,
+        rawPayload: messages.rawPayload,
+        conversationId: messages.conversationId,
+        accountId: conversations.accountId,
       })
-      .from(whatsappMessages)
+      .from(messages)
       .innerJoin(
-        whatsappConversations,
-        eq(whatsappMessages.conversationId, whatsappConversations.id),
+        conversations,
+        eq(messages.conversationId, conversations.id),
       )
       .where(
         and(
-          eq(whatsappMessages.id, messageId),
-          eq(whatsappConversations.accountId, accountId),
-          eq(whatsappMessages.conversationId, conversationId),
+          eq(messages.id, messageId),
+          eq(conversations.accountId, accountId),
+          eq(messages.conversationId, conversationId),
         ),
       )
       .limit(1);
@@ -1408,20 +1411,20 @@ export class WhatsappService {
       // tenta localizar apenas pelo messageId e account para reduzir falhas de id desatualizado no front
       const fallback = await db
         .select({
-          id: whatsappMessages.id,
-          rawPayload: whatsappMessages.rawPayload,
-          conversationId: whatsappMessages.conversationId,
-          accountId: whatsappConversations.accountId,
+          id: messages.id,
+          rawPayload: messages.rawPayload,
+          conversationId: messages.conversationId,
+          accountId: conversations.accountId,
         })
-        .from(whatsappMessages)
+        .from(messages)
         .innerJoin(
-          whatsappConversations,
-          eq(whatsappMessages.conversationId, whatsappConversations.id),
+          conversations,
+          eq(messages.conversationId, conversations.id),
         )
         .where(
           and(
-            eq(whatsappMessages.id, messageId),
-            eq(whatsappConversations.accountId, accountId),
+            eq(messages.id, messageId),
+            eq(conversations.accountId, accountId),
           ),
         )
         .limit(1);
