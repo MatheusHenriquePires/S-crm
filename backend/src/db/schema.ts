@@ -145,7 +145,7 @@ export const whatsappMessages = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     accountId: uuid('account_id'),
     conversationId: uuid('conversation_id').notNull(),
-    direction: messageDirectionEnum('direction').notNull(),
+    direction: text('direction').notNull(),
     type: text('type'),
     externalMessageId: text('external_message_id'),
     waFrom: text('wa_from'),
