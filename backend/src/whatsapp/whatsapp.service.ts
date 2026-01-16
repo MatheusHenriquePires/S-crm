@@ -6,7 +6,7 @@ import wppconnect = require('@wppconnect-team/wppconnect');
 import pino from 'pino';
 import { and, desc, eq, gt, lt, isNotNull } from 'drizzle-orm';
 import { Subject } from 'rxjs';
-import { db } from '../db/db';
+import { db, pool } from '../db/db';
 import {
   getConversationsTable,
   getMessagesTable,
@@ -69,8 +69,25 @@ export class WhatsappService implements OnModuleInit {
         if (!accountId) continue;
         this.ensureQrSocket(accountId);
       }
+      await this.ensureDirectionColumnIsText();
     } catch {
       // se falhar, seguimos sem auto-reconnect
+    }
+  }
+
+  private async ensureDirectionColumnIsText() {
+    try {
+      const res = await pool.query(
+        "SELECT data_type, udt_name FROM information_schema.columns WHERE table_name='messages' AND column_name='direction'",
+      );
+      const col = res.rows?.[0];
+      if (col && col.data_type === 'USER-DEFINED') {
+        await pool.query(
+          'ALTER TABLE messages ALTER COLUMN direction TYPE text USING direction::text',
+        );
+      }
+    } catch (err) {
+      console.error('direction column check failed', err);
     }
   }
 
