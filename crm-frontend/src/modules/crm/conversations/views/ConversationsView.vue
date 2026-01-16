@@ -112,12 +112,7 @@ function formatTime(value?: string | null) {
 
 function dedupeConversations(list: Conversation[]) {
   const map = new Map<string, Conversation>()
-  const firstLoginAt = loadFirstLoginAt(accountId.value)
   for (const item of list) {
-    // filtra para mostrar apenas conversas com mensagens depois do primeiro login
-    const lastTs = new Date(item.lastMessageAt).getTime()
-    if (firstLoginAt && (!Number.isFinite(lastTs) || lastTs < firstLoginAt)) continue
-
     const normalized = normalizePhone(item.contactPhone)
     const shortKey =
       normalized.length > 11 ? normalized.slice(-11) : normalized || item.contactPhone || item.id
@@ -364,12 +359,14 @@ function jumpToMessage(messageId: string | null) {
 
 async function loadConversations() {
   if (!accountId.value) return
+  const sinceTs = loadFirstLoginAt(accountId.value)
+  const since = sinceTs ? new Date(sinceTs).toISOString() : null
   const shouldShowLoading = conversations.value.length === 0
   if (shouldShowLoading) loading.value = true
   loadError.value = ''
   try {
     const response = await http.get('/whatsapp/conversations', {
-      params: { accountId: accountId.value },
+      params: { accountId: accountId.value, since },
     })
     const deduped = dedupeConversations(response.data ?? [])
     const activePhone = activeConversation.value
@@ -395,9 +392,11 @@ async function loadConversations() {
 
 async function loadMessages(conversationId: string, forceScroll = false, markRead = false) {
   if (!accountId.value) return
+  const sinceTs = loadFirstLoginAt(accountId.value)
+  const since = sinceTs ? new Date(sinceTs).toISOString() : null
   try {
     const response = await http.get(`/whatsapp/conversations/${conversationId}/messages`, {
-      params: { accountId: accountId.value },
+      params: { accountId: accountId.value, since },
     })
     messages.value = response.data ?? []
     await nextTick()
