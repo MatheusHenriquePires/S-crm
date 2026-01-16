@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import wppconnect = require('@wppconnect-team/wppconnect');
 import pino from 'pino';
-import { and, desc, eq, gt, lt } from 'drizzle-orm';
+import { and, desc, eq, gt, lt, isNotNull } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { db } from '../db/db';
 import {
@@ -1117,6 +1117,10 @@ export class WhatsappService {
     mimetype?: string | null;
   }) {
     const { messages } = await this.getTables();
+    const directionDb =
+      params.direction && params.direction.toString().toLowerCase() === 'outbound'
+        ? 'outbound'
+        : 'inbound';
     const contactPhone = params.contactPhone
       ? this.sanitizeContactPhone(params.contactPhone)
       : null;
@@ -1152,7 +1156,7 @@ export class WhatsappService {
       .where(
         and(
           eq(messages.conversationId, conversationId),
-          eq(messages.direction, params.direction),
+          eq(messages.direction, directionDb),
           eq(messages.text, params.body),
           gt(messages.createdAt, windowStart),
           lt(messages.createdAt, windowEnd),
@@ -1166,13 +1170,13 @@ export class WhatsappService {
     const inserted = await db
       .insert(messages)
       .values({
-        conversationId,
-        accountId: params.accountId,
-        direction: params.direction,
-        text: params.body,
-        createdAt: params.messageTimestamp,
-        rawPayload: params.rawPayload,
-        externalMessageId: params.wamid ?? null,
+      conversationId,
+      accountId: params.accountId,
+      direction: directionDb,
+      text: params.body,
+      createdAt: params.messageTimestamp,
+      rawPayload: params.rawPayload,
+      externalMessageId: params.wamid ?? null,
         mimeType: params.mimetype ?? null,
         fileName: null,
         fileSizeBytes: null,
@@ -1237,7 +1241,12 @@ export class WhatsappService {
         })
         .from(conversations)
         .leftJoin(contacts, eq(conversations.contactId, contacts.id))
-        .where(eq(conversations.accountId, accountId))
+        .where(
+          and(
+            eq(conversations.accountId, accountId),
+            isNotNull(conversations.lastMessageAt),
+          ),
+        )
         .orderBy(desc(conversations.lastMessageAt));
 
       return rows.map((row) => ({
