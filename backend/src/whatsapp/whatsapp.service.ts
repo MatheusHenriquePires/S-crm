@@ -1256,7 +1256,7 @@ export class WhatsappService implements OnModuleInit {
   }
 
   async listConversations(accountId: string, since?: Date | null) {
-    const { conversations, contacts } = await this.getTables();
+    const { conversations, contacts, messages } = await this.getTables();
     try {
       const rows = await db
         .select({
@@ -1275,13 +1275,29 @@ export class WhatsappService implements OnModuleInit {
           contactPhone: contacts.phoneE164,
         })
         .from(conversations)
+        .innerJoin(messages, eq(messages.conversationId, conversations.id))
         .leftJoin(contacts, eq(conversations.contactId, contacts.id))
         .where(
           and(
             eq(conversations.accountId, accountId),
             isNotNull(conversations.lastMessageAt),
-            since ? gt(conversations.lastMessageAt, since) : undefined,
+            since ? gt(messages.createdAt, since) : undefined,
           ),
+        )
+        .groupBy(
+          conversations.id,
+          conversations.accountId,
+          conversations.contactId,
+          conversations.stage,
+          conversations.classification,
+          conversations.valueCents,
+          conversations.currency,
+          conversations.isOpen,
+          conversations.lastMessageAt,
+          conversations.createdAt,
+          conversations.updatedAt,
+          contacts.name,
+          contacts.phoneE164,
         )
         .orderBy(desc(conversations.lastMessageAt));
 
