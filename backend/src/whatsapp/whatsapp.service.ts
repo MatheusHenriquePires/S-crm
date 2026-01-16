@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -36,7 +36,7 @@ type CloudCredentials = {
 };
 
 @Injectable()
-export class WhatsappService {
+export class WhatsappService implements OnModuleInit {
   private readonly connections = new Map<string, ConnectionState>();
   private readonly sockets = new Map<string, any>();
   private readonly reconnectTimers = new Map<string, NodeJS.Timeout>();
@@ -50,12 +50,29 @@ export class WhatsappService {
   private readonly startPromises = new Map<string, Promise<ConnectionState>>();
   private readonly recentMessageIds = new Map<string, Map<string, number>>();
   private readonly historyProcessing = new Set<string>();
+  private readonly sessionBaseDir =
+    process.env.WPP_SESSION_DIR || path.join(process.cwd(), '.wppconnect');
   private tablesPromise: Promise<{
     conversations: any;
     messages: any;
     integrations: any;
     contacts: any;
   }> | null = null;
+
+  async onModuleInit() {
+    try {
+      fs.mkdirSync(this.sessionBaseDir, { recursive: true });
+      const entries = fs.readdirSync(this.sessionBaseDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const accountId = entry.name;
+        if (!accountId) continue;
+        this.ensureQrSocket(accountId);
+      }
+    } catch {
+      // se falhar, seguimos sem auto-reconnect
+    }
+  }
 
   private async getTables() {
     if (!this.tablesPromise) {
@@ -182,7 +199,7 @@ export class WhatsappService {
     if (this.sockets.has(accountId)) return;
     if (this.resetInFlight.has(accountId)) return;
     if (this.startPromises.has(accountId)) return;
-    const sessionDir = path.join(process.cwd(), '.wppconnect', accountId);
+    const sessionDir = path.join(this.sessionBaseDir, accountId);
     if (!fs.existsSync(sessionDir)) return;
     this.startQr(accountId).catch(() => {
       // ignore auto-connect errors
@@ -412,7 +429,8 @@ export class WhatsappService {
       return this.getStatus(accountId);
     }
 
-    const sessionDir = path.join(process.cwd(), '.wppconnect', accountId);
+    fs.mkdirSync(this.sessionBaseDir, { recursive: true });
+    const sessionDir = path.join(this.sessionBaseDir, accountId);
     if (options?.reset) {
       this.cleanupSocket(accountId);
       fs.rmSync(sessionDir, { recursive: true, force: true });
