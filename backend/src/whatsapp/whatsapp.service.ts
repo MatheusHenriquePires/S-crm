@@ -1220,7 +1220,7 @@ export class WhatsappService {
     });
   }
 
-  async listConversations(accountId: string) {
+  async listConversations(accountId: string, since?: Date | null) {
     const { conversations, contacts } = await this.getTables();
     try {
       const rows = await db
@@ -1245,6 +1245,7 @@ export class WhatsappService {
           and(
             eq(conversations.accountId, accountId),
             isNotNull(conversations.lastMessageAt),
+            since ? gt(conversations.lastMessageAt, since) : undefined,
           ),
         )
         .orderBy(desc(conversations.lastMessageAt));
@@ -1269,12 +1270,17 @@ export class WhatsappService {
     }
   }
 
-  async listMessages(conversationId: string) {
+  async listMessages(conversationId: string, since?: Date | null) {
     const { messages } = await this.getTables();
     const rows = await db
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          since ? gt(messages.createdAt, since) : undefined,
+        ),
+      )
       .orderBy(messages.createdAt);
 
     return rows.map((row) => {
@@ -1295,10 +1301,14 @@ export class WhatsappService {
     });
   }
 
-  async listMessagesForAccount(accountId: string, conversationId: string) {
+  async listMessagesForAccount(
+    accountId: string,
+    conversationId: string,
+    since?: Date | null,
+  ) {
     const convo = await this.getConversationById(accountId, conversationId);
     if (!convo) return [];
-    return this.listMessages(conversationId);
+    return this.listMessages(conversationId, since);
   }
 
   private async getLastMessageTimestampForPhone(

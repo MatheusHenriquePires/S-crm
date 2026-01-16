@@ -186,8 +186,13 @@ export class WhatsappController {
 
   @UseGuards(JwtAuthGuard)
   @Get('conversations')
-  async listConversations(@Query('accountId') accountId: string) {
-    return this.whatsapp.listConversations(accountId);
+  async listConversations(
+    @Query('accountId') accountId: string,
+    @Query('since') since?: string,
+  ) {
+    const sinceDate = since ? new Date(since) : null;
+    const validSince = sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : null;
+    return this.whatsapp.listConversations(accountId, validSince);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -202,11 +207,14 @@ export class WhatsappController {
   async listMessages(
     @Query('accountId') accountId: string,
     @Param('conversationId') conversationId: string,
+    @Query('since') since?: string,
   ) {
     if (!accountId || !conversationId) {
       return [];
     }
-    return this.whatsapp.listMessagesForAccount(accountId, conversationId);
+    const sinceDate = since ? new Date(since) : null;
+    const validSince = sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : null;
+    return this.whatsapp.listMessagesForAccount(accountId, conversationId, validSince);
   }
 
   @UseGuards(JwtAuthGuard)
