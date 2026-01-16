@@ -82,6 +82,7 @@ function openStream() {
 }
 
 onMounted(() => {
+  refreshWppStatus()
   openStream()
 })
 
@@ -89,6 +90,7 @@ watch(
   () => onboarding.accountId,
   (id) => {
     if (id) {
+      refreshWppStatus()
       openStream()
     } else {
       closeStream()
