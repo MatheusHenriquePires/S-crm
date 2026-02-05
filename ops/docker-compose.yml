@@ -1,4 +1,16 @@
 services:
+  system_bancodb:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: crm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   backend:
     build:
       context: ../backend
@@ -24,3 +36,7 @@ services:
     environment:
       - VITE_API_URL=${VITE_API_URL:-https://api.agencianetmark.com}
     restart: unless-stopped
+
+volumes:
+  postgres_data:
+

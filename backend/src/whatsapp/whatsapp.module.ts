@@ -5,9 +5,12 @@ import { WhatsappService } from './whatsapp.service';
 import { AuthModule } from '../auth/auth.module';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 
+import { QueueModule } from '../queue/queue.module';
+import { WhatsappProcessor } from './whatsapp.processor';
+
 @Module({
-  imports: [JwtModule.register({}), AuthModule],
+  imports: [JwtModule.register({}), AuthModule, QueueModule],
   controllers: [WhatsappController],
-  providers: [WhatsappService, JwtAuthGuard],
+  providers: [WhatsappService, JwtAuthGuard, WhatsappProcessor],
 })
-export class WhatsappModule {}
+export class WhatsappModule { }

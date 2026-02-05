@@ -8,11 +8,15 @@ import {
   Param,
   Sse,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { interval, merge, map, of } from 'rxjs';
 import { WhatsappService } from './whatsapp.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { ZodValidationPipe } from '../common/pipes/zod.pipe';
+import { SendMessageSchema } from './whatsapp.validation';
+import type { SendMessageDto } from './whatsapp.validation';
 
 type ConnectRequest = {
   accountId: string;
@@ -63,7 +67,7 @@ type CreateLeadRequest = {
 
 @Controller('whatsapp')
 export class WhatsappController {
-  constructor(private readonly whatsapp: WhatsappService) {}
+  constructor(private readonly whatsapp: WhatsappService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get('status')
@@ -219,9 +223,10 @@ export class WhatsappController {
 
   @UseGuards(JwtAuthGuard)
   @Post('conversations/:conversationId/messages')
+  @UsePipes(new ZodValidationPipe(SendMessageSchema))
   async sendMessage(
     @Param('conversationId') conversationId: string,
-    @Body() body: OutboundMessageRequest,
+    @Body() body: SendMessageDto,
   ) {
     return this.whatsapp.sendOutboundMessage(
       body.accountId,

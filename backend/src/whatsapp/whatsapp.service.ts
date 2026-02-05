@@ -1,5 +1,6 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
+import PgBoss from 'pg-boss';
 import * as path from 'path';
 import * as fs from 'fs';
 import wppconnect = require('@wppconnect-team/wppconnect');
@@ -58,6 +59,8 @@ export class WhatsappService implements OnModuleInit {
     integrations: any;
     contacts: any;
   }> | null = null;
+
+  constructor(@Inject('PG_BOSS') private readonly boss: any) { }
 
   async onModuleInit() {
     try {
@@ -326,7 +329,7 @@ export class WhatsappService implements OnModuleInit {
     return true;
   }
 
-  private async persistWppMessage(accountId: string, message: any) {
+  async processIncomingMessage(accountId: string, message: any) {
     if (!this.shouldPersistMessage(accountId, message)) return;
     const wamid = this.extractWamid(message);
     const from = typeof message?.from === 'string' ? message.from : '';
@@ -385,16 +388,16 @@ export class WhatsappService implements OnModuleInit {
     const contactName =
       direction === 'INBOUND'
         ? message?.sender?.pushname ||
-          message?.sender?.name ||
-          message?.notifyName ||
-          null
+        message?.sender?.name ||
+        message?.notifyName ||
+        null
         : null;
     const status =
       direction === 'INBOUND'
         ? 'delivered'
         : this.mapAckToStatus(
-            typeof message?.ack === 'number' ? message.ack : 1,
-          );
+          typeof message?.ack === 'number' ? message.ack : 1,
+        );
     await this.saveMessage({
       accountId,
       contactPhone,
@@ -532,19 +535,13 @@ export class WhatsappService implements OnModuleInit {
             if (message?.isGroupMsg) return;
             if (message?.isStatus) return;
             if (!message?.from && !message?.to) return;
-            this.persistWppMessage(accountId, message).catch((error) => {
-              console.error('[wpp] persist message failed', {
-                accountId,
-                error,
-                messageId:
-                  message?.id?._serialized ??
-                  message?.id?.id ??
-                  message?.id ??
-                  null,
-              });
-            });
+
+            // Send to queue instead of processing directly
+            this.boss.send('incoming-message', { accountId, message })
+              .catch(err => console.error('Failed to enqueue incoming message', err));
           };
           client.onMessage(handleMessage);
+
           // Capture messages sent from the phone as well as received ones
           if (typeof client.onAnyMessage === 'function') {
             client.onAnyMessage(handleMessage);
@@ -625,20 +622,20 @@ export class WhatsappService implements OnModuleInit {
       const chats = await client.getAllChats();
       const list = Array.isArray(chats)
         ? chats
-            .filter((chat: any) => {
-              const serialized =
-                typeof chat?.id?._serialized === 'string'
-                  ? chat.id._serialized
-                  : typeof chat?.id === 'string'
-                    ? chat.id
-                    : '';
-              const isGroup =
-                Boolean(chat?.isGroup) ||
-                serialized.endsWith('@g.us') ||
-                serialized.endsWith('g.us');
-              return !isGroup;
-            })
-            .slice(0, 30)
+          .filter((chat: any) => {
+            const serialized =
+              typeof chat?.id?._serialized === 'string'
+                ? chat.id._serialized
+                : typeof chat?.id === 'string'
+                  ? chat.id
+                  : '';
+            const isGroup =
+              Boolean(chat?.isGroup) ||
+              serialized.endsWith('@g.us') ||
+              serialized.endsWith('g.us');
+            return !isGroup;
+          })
+          .slice(0, 30)
         : [];
       for (const chat of list) {
         const chatId =
@@ -672,7 +669,7 @@ export class WhatsappService implements OnModuleInit {
               ? new Date(msg.timestamp * 1000)
               : new Date();
           if (lastSaved && ts <= lastSaved) continue;
-          await this.persistWppMessage(accountId, msg);
+          await this.processIncomingMessage(accountId, msg);
         }
       }
     } finally {
@@ -1205,13 +1202,13 @@ export class WhatsappService implements OnModuleInit {
     const inserted = await db
       .insert(messages)
       .values({
-      conversationId,
-      accountId: params.accountId,
-      direction: directionDb,
-      text: params.body,
-      createdAt: params.messageTimestamp,
-      rawPayload: params.rawPayload,
-      externalMessageId: params.wamid ?? null,
+        conversationId,
+        accountId: params.accountId,
+        direction: directionDb,
+        text: params.body,
+        createdAt: params.messageTimestamp,
+        rawPayload: params.rawPayload,
+        externalMessageId: params.wamid ?? null,
         mimeType: params.mimetype ?? null,
         fileName: null,
         fileSizeBytes: null,
@@ -1432,6 +1429,21 @@ export class WhatsappService implements OnModuleInit {
   }
 
   async sendOutboundMessage(
+    accountId: string,
+    conversationId: string,
+    body: string,
+    replyToWamid?: string | null,
+  ) {
+    await this.boss.send('outgoing-message', {
+      accountId,
+      conversationId,
+      body,
+      replyToWamid
+    });
+    return { ok: true, status: 'queued' };
+  }
+
+  async executeSendOutboundMessage(
     accountId: string,
     conversationId: string,
     body: string,

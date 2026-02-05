@@ -6,8 +6,10 @@ import { RateLimitService } from './common/rate-limit.service';
 import { RateLimitGuard } from './common/rate-limit.guard';
 import { HealthController } from './health/health.controller';
 
+import { QueueModule } from './queue/queue.module';
+
 @Module({
-  imports: [AuthModule, WhatsappModule],
+  imports: [AuthModule, WhatsappModule, QueueModule],
   controllers: [HealthController],
   providers: [
     RateLimitService,
@@ -17,4 +19,4 @@ import { HealthController } from './health/health.controller';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
