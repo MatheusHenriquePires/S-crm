@@ -1,6 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const PgBoss = require('pg-boss');
+const { PgBoss } = require('pg-boss');
 
 @Global()
 @Module({
