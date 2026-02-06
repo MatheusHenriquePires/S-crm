@@ -1289,6 +1289,7 @@ export class WhatsappService implements OnModuleInit {
   }
 
   async listConversations(accountId: string, since?: Date | null) {
+    if (!accountId) return [];
     const { conversations, contacts, messages } = await this.getTables();
     try {
       const rows = await db
@@ -1313,6 +1314,7 @@ export class WhatsappService implements OnModuleInit {
         .where(
           and(
             eq(conversations.accountId, accountId),
+            eq(messages.accountId, accountId),
             isNotNull(conversations.lastMessageAt),
             since ? gt(messages.createdAt, since) : undefined,
           ),
