@@ -24,13 +24,15 @@ async function bootstrap() {
   const envOrigins = process.env.CORS_ORIGINS || '';
   const allowedOrigins = envOrigins
     .split(',')
-    .map((o) => o.trim())
+    .map((o) => o.trim().replace(/\/$/, ''))
     .filter(Boolean);
 
   const isOriginAllowed = (origin?: string) => {
     if (!origin) return false;
+    if (allowedOrigins.includes('*')) return true;
+    const normalizedOrigin = origin.replace(/\/$/, '');
     if (!allowedOrigins.length) return true; // reflexivo em dev
-    return allowedOrigins.includes(origin);
+    return allowedOrigins.includes(normalizedOrigin);
   };
 
   // CORS fallback to ensure headers in all responses (including preflight).
