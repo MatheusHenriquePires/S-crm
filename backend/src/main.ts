@@ -20,10 +20,23 @@ async function bootstrap() {
     }),
   );
 
+  // Lista de origens permitidas (CORS_ORIGINS separado por vírgula). Sem env => reflexivo.
+  const envOrigins = process.env.CORS_ORIGINS || '';
+  const allowedOrigins = envOrigins
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const isOriginAllowed = (origin?: string) => {
+    if (!origin) return false;
+    if (!allowedOrigins.length) return true; // reflexivo em dev
+    return allowedOrigins.includes(origin);
+  };
+
   // CORS fallback to ensure headers in all responses (including preflight).
   app.use((req, res, next) => {
     const requestOrigin = req.headers.origin as string | undefined;
-    if (requestOrigin) {
+    if (requestOrigin && isOriginAllowed(requestOrigin)) {
       res.header('Access-Control-Allow-Origin', requestOrigin);
       res.header('Vary', 'Origin');
     }
@@ -44,8 +57,11 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    // Afrouxado para evitar bloqueio em produção (reflete a origem do request).
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, false);
+      if (isOriginAllowed(origin)) return callback(null, origin);
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
