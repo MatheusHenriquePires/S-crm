@@ -6,154 +6,41 @@ const router = useRouter()
 </script>
 
 <template>
-  <div class="whatsapp-layout">
-    <section class="hero">
-      <div class="badge">Passo 3 de 3</div>
-      <h1>Conecte o WhatsApp e comece a receber leads</h1>
-      <p>Ative o canal para responder com velocidade e organizar tudo no CRM.</p>
-
-      <div class="steps">
-        <div class="step">
-          <span class="dot ready"></span>
-          <div>
-            <strong>Prepare o número</strong>
-            <p>Use o chip que vai atender seus clientes.</p>
-          </div>
-        </div>
-        <div class="step">
-          <span class="dot ready"></span>
-          <div>
-            <strong>Leia o QR</strong>
-            <p>Conecte em segundos com o WhatsApp Web.</p>
-          </div>
-        </div>
-        <div class="step">
-          <span class="dot ready"></span>
-          <div>
-            <strong>Teste a inbox</strong>
-            <p>Envie um “oi” para validar a entrega.</p>
-          </div>
-        </div>
+  <div class="whatsapp-page">
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">Passo 3 de 3</p>
+        <h1>Conectar WhatsApp</h1>
+        <p class="muted">Escolha Cloud API ou QR Code para ativar o canal.</p>
       </div>
-    </section>
+      <button class="ghost" type="button" @click="router.push('/')">Fechar</button>
+    </header>
 
-    <section class="card">
-      <header class="card-head">
-        <div>
-          <p class="eyebrow">Canal</p>
-          <h2>Conectar WhatsApp</h2>
-          <p class="muted">Escolha Cloud API ou QR Code e acompanhe o status.</p>
-        </div>
-        <button class="ghost" type="button" @click="router.push('/')">Fechar</button>
-      </header>
-
-      <div class="card-body">
-        <WhatsappConnectModal @close="router.push('/')" />
-      </div>
-    </section>
+    <div class="card">
+      <WhatsappConnectModal @close="router.push('/')" />
+    </div>
   </div>
 </template>
 
 <style scoped>
 :global(body) {
-  background: radial-gradient(circle at 10% 20%, #e8f6ef 0%, #fdf3e7 30%, #f7eafc 60%, #f9f9ff 100%);
+  background: #f5f7fb;
 }
 
-.whatsapp-layout {
+.whatsapp-page {
   min-height: 100vh;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(420px, 560px);
-  gap: 40px;
-  padding: 48px 64px;
-  align-items: start;
+  gap: 16px;
 }
 
-.hero {
-  max-width: 560px;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: #0b8f5a;
-  color: #fff;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.hero h1 {
-  margin: 18px 0 10px;
-  font-size: 36px;
-  line-height: 1.15;
-  color: #0b1c33;
-}
-
-.hero p {
-  color: #4a5568;
-  margin-bottom: 18px;
-}
-
-.steps {
-  display: grid;
-  gap: 12px;
-}
-
-.step {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e2e8f0;
-  backdrop-filter: blur(6px);
-}
-
-.step strong {
-  color: #0b1c33;
-}
-
-.step p {
-  color: #6b7280;
-  margin: 2px 0 0;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  margin-top: 6px;
-}
-
-.dot.ready {
-  background: #0b8f5a;
-  box-shadow: 0 0 0 4px rgba(11, 143, 90, 0.15);
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow:
-    0 15px 40px rgba(15, 23, 42, 0.06),
-    0 1px 4px rgba(15, 23, 42, 0.08);
-  padding: 24px;
-  border: 1px solid #e2e8f0;
-}
-
-.card-head {
+.page-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
-}
-
-.card-head h2 {
-  margin: 4px 0 2px;
-  color: #0b1c33;
 }
 
 .eyebrow {
@@ -161,12 +48,18 @@ const router = useRouter()
   letter-spacing: 0.08em;
   font-size: 12px;
   color: #6b7280;
+  margin: 0 0 4px;
+}
+
+.page-head h1 {
   margin: 0;
+  color: #0b1c33;
+  font-size: 28px;
 }
 
 .muted {
   color: #6b7280;
-  margin: 0;
+  margin: 4px 0 0;
 }
 
 .ghost {
@@ -182,18 +75,20 @@ const router = useRouter()
   border-color: #cbd5e1;
 }
 
-.card-body {
-  margin-top: 8px;
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.06),
+    0 1px 3px rgba(15, 23, 42, 0.08);
+  padding: 16px;
 }
 
-@media (max-width: 1080px) {
-  .whatsapp-layout {
-    grid-template-columns: 1fr;
-    padding: 32px 20px;
-  }
-
-  .card {
-    order: -1;
+@media (max-width: 720px) {
+  .page-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
