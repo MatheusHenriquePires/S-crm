@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
-import PgBoss from 'pg-boss';
+import type PgBoss from 'pg-boss';
 import * as path from 'path';
 import * as fs from 'fs';
 import wppconnect = require('@wppconnect-team/wppconnect');
@@ -60,12 +60,14 @@ export class WhatsappService implements OnModuleInit {
     contacts: any;
   }> | null = null;
 
-  constructor(@Inject('PG_BOSS') private readonly boss: any) { }
+  constructor(@Inject('PG_BOSS') private readonly boss: PgBoss) {}
 
   async onModuleInit() {
     try {
       fs.mkdirSync(this.sessionBaseDir, { recursive: true });
-      const entries = fs.readdirSync(this.sessionBaseDir, { withFileTypes: true });
+      const entries = fs.readdirSync(this.sessionBaseDir, {
+        withFileTypes: true,
+      });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
         const accountId = entry.name;
@@ -388,16 +390,16 @@ export class WhatsappService implements OnModuleInit {
     const contactName =
       direction === 'INBOUND'
         ? message?.sender?.pushname ||
-        message?.sender?.name ||
-        message?.notifyName ||
-        null
+          message?.sender?.name ||
+          message?.notifyName ||
+          null
         : null;
     const status =
       direction === 'INBOUND'
         ? 'delivered'
         : this.mapAckToStatus(
-          typeof message?.ack === 'number' ? message.ack : 1,
-        );
+            typeof message?.ack === 'number' ? message.ack : 1,
+          );
     await this.saveMessage({
       accountId,
       contactPhone,
@@ -537,8 +539,11 @@ export class WhatsappService implements OnModuleInit {
             if (!message?.from && !message?.to) return;
 
             // Send to queue instead of processing directly
-            this.boss.send('incoming-message', { accountId, message })
-              .catch(err => console.error('Failed to enqueue incoming message', err));
+            this.boss
+              .send('incoming-message', { accountId, message })
+              .catch((err) =>
+                console.error('Failed to enqueue incoming message', err),
+              );
           };
           client.onMessage(handleMessage);
 
@@ -622,20 +627,20 @@ export class WhatsappService implements OnModuleInit {
       const chats = await client.getAllChats();
       const list = Array.isArray(chats)
         ? chats
-          .filter((chat: any) => {
-            const serialized =
-              typeof chat?.id?._serialized === 'string'
-                ? chat.id._serialized
-                : typeof chat?.id === 'string'
-                  ? chat.id
-                  : '';
-            const isGroup =
-              Boolean(chat?.isGroup) ||
-              serialized.endsWith('@g.us') ||
-              serialized.endsWith('g.us');
-            return !isGroup;
-          })
-          .slice(0, 30)
+            .filter((chat: any) => {
+              const serialized =
+                typeof chat?.id?._serialized === 'string'
+                  ? chat.id._serialized
+                  : typeof chat?.id === 'string'
+                    ? chat.id
+                    : '';
+              const isGroup =
+                Boolean(chat?.isGroup) ||
+                serialized.endsWith('@g.us') ||
+                serialized.endsWith('g.us');
+              return !isGroup;
+            })
+            .slice(0, 30)
         : [];
       for (const chat of list) {
         const chatId =
@@ -1150,7 +1155,8 @@ export class WhatsappService implements OnModuleInit {
   }) {
     const { messages } = await this.getTables();
     const directionDb =
-      params.direction && params.direction.toString().toLowerCase() === 'outbound'
+      params.direction &&
+      params.direction.toString().toLowerCase() === 'outbound'
         ? 'outbound'
         : 'inbound';
     const contactPhone = params.contactPhone
@@ -1438,7 +1444,7 @@ export class WhatsappService implements OnModuleInit {
       accountId,
       conversationId,
       body,
-      replyToWamid
+      replyToWamid,
     });
     return { ok: true, status: 'queued' };
   }

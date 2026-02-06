@@ -13,4 +13,4 @@ import { WhatsappProcessor } from './whatsapp.processor';
   controllers: [WhatsappController],
   providers: [WhatsappService, JwtAuthGuard, WhatsappProcessor],
 })
-export class WhatsappModule { }
+export class WhatsappModule {}

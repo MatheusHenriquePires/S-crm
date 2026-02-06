@@ -35,12 +35,6 @@ type CloudConnectRequest = {
   webhookUrl: string;
 };
 
-type OutboundMessageRequest = {
-  accountId: string;
-  body: string;
-  replyToWamid?: string | null;
-};
-
 type ClassificationRequest = {
   accountId: string;
   classification?: string | null;
@@ -67,7 +61,7 @@ type CreateLeadRequest = {
 
 @Controller('whatsapp')
 export class WhatsappController {
-  constructor(private readonly whatsapp: WhatsappService) { }
+  constructor(private readonly whatsapp: WhatsappService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('status')
@@ -195,7 +189,8 @@ export class WhatsappController {
     @Query('since') since?: string,
   ) {
     const sinceDate = since ? new Date(since) : null;
-    const validSince = sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : null;
+    const validSince =
+      sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : null;
     return this.whatsapp.listConversations(accountId, validSince);
   }
 
@@ -217,8 +212,13 @@ export class WhatsappController {
       return [];
     }
     const sinceDate = since ? new Date(since) : null;
-    const validSince = sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : null;
-    return this.whatsapp.listMessagesForAccount(accountId, conversationId, validSince);
+    const validSince =
+      sinceDate && !isNaN(sinceDate.getTime()) ? sinceDate : null;
+    return this.whatsapp.listMessagesForAccount(
+      accountId,
+      conversationId,
+      validSince,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

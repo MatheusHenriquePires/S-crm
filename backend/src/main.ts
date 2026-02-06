@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
+import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { PinoLogger } from './logger/pino-logger';
 
@@ -8,7 +9,7 @@ async function bootstrap() {
     logger: new PinoLogger(),
   });
 
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('ngrok-skip-browser-warning', '1');
     next();
   });
@@ -36,8 +37,8 @@ async function bootstrap() {
   };
 
   // CORS fallback to ensure headers in all responses (including preflight).
-  app.use((req, res, next) => {
-    const requestOrigin = req.headers.origin as string | undefined;
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const requestOrigin = req.headers.origin;
     if (requestOrigin && isOriginAllowed(requestOrigin)) {
       res.header('Access-Control-Allow-Origin', requestOrigin);
       res.header('Vary', 'Origin');
@@ -79,4 +80,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3001);
 }
-bootstrap();
+void bootstrap();

@@ -19,4 +19,4 @@ import { QueueModule } from './queue/queue.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
