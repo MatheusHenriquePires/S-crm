@@ -6,13 +6,13 @@ const router = useRouter()
 </script>
 
 <template>
-  <div class="whatsapp-setup">
-    <div class="hero">
+  <div class="whatsapp-layout">
+    <section class="hero">
       <div class="badge">Passo 3 de 3</div>
-      <h1>Conecte o WhatsApp e receba leads</h1>
+      <h1>Conecte o WhatsApp e comece a receber leads</h1>
       <p>Ative o canal para responder com velocidade e organizar tudo no CRM.</p>
 
-      <div class="hero-steps">
+      <div class="steps">
         <div class="step">
           <span class="dot ready"></span>
           <div>
@@ -35,22 +35,22 @@ const router = useRouter()
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="panel">
-      <div class="panel-head">
+    <section class="card">
+      <header class="card-head">
         <div>
           <p class="eyebrow">Canal</p>
           <h2>Conectar WhatsApp</h2>
           <p class="muted">Escolha Cloud API ou QR Code e acompanhe o status.</p>
         </div>
         <button class="ghost" type="button" @click="router.push('/')">Fechar</button>
-      </div>
+      </header>
 
-      <div class="panel-body">
+      <div class="card-body">
         <WhatsappConnectModal @close="router.push('/')" />
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -59,17 +59,17 @@ const router = useRouter()
   background: radial-gradient(circle at 10% 20%, #e8f6ef 0%, #fdf3e7 30%, #f7eafc 60%, #f9f9ff 100%);
 }
 
-.whatsapp-setup {
+.whatsapp-layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-  padding: 48px 72px;
+  grid-template-columns: minmax(320px, 1fr) minmax(420px, 560px);
+  gap: 40px;
+  padding: 48px 64px;
+  align-items: start;
 }
 
 .hero {
-  align-self: center;
-  max-width: 520px;
+  max-width: 560px;
 }
 
 .badge {
@@ -85,21 +85,20 @@ const router = useRouter()
 }
 
 .hero h1 {
-  margin: 16px 0 8px;
-  font-size: 40px;
-  line-height: 1.1;
+  margin: 18px 0 10px;
+  font-size: 36px;
+  line-height: 1.15;
   color: #0b1c33;
 }
 
 .hero p {
-  color: #42526e;
-  margin-bottom: 24px;
+  color: #4a5568;
+  margin-bottom: 18px;
 }
 
-.hero-steps {
+.steps {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
 }
 
 .step {
@@ -108,9 +107,9 @@ const router = useRouter()
   gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid #e2e8f0;
+  backdrop-filter: blur(6px);
 }
 
 .step strong {
@@ -118,7 +117,7 @@ const router = useRouter()
 }
 
 .step p {
-  color: #5c6c85;
+  color: #6b7280;
   margin: 2px 0 0;
 }
 
@@ -134,26 +133,26 @@ const router = useRouter()
   box-shadow: 0 0 0 4px rgba(11, 143, 90, 0.15);
 }
 
-.panel {
+.card {
   background: #ffffff;
   border-radius: 20px;
   box-shadow:
     0 15px 40px rgba(15, 23, 42, 0.06),
     0 1px 4px rgba(15, 23, 42, 0.08);
-  padding: 28px;
+  padding: 24px;
   border: 1px solid #e2e8f0;
 }
 
-.panel-head {
+.card-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
-.panel-head h2 {
-  margin: 4px 0;
+.card-head h2 {
+  margin: 4px 0 2px;
   color: #0b1c33;
 }
 
@@ -183,17 +182,17 @@ const router = useRouter()
   border-color: #cbd5e1;
 }
 
-.panel-body {
-  padding: 8px 0;
+.card-body {
+  margin-top: 8px;
 }
 
 @media (max-width: 1080px) {
-  .whatsapp-setup {
+  .whatsapp-layout {
     grid-template-columns: 1fr;
-    padding: 32px 24px;
+    padding: 32px 20px;
   }
 
-  .panel {
+  .card {
     order: -1;
   }
 }
