@@ -8,8 +8,24 @@ const { PgBoss } = require('pg-boss');
     {
       provide: 'PG_BOSS',
       useFactory: async () => {
-        const boss = new PgBoss(process.env.DATABASE_URL!);
-        await boss.start();
+        const connectionString = process.env.DATABASE_URL;
+        if (!connectionString) {
+          throw new Error('DATABASE_URL is not set');
+        }
+
+        const boss = new PgBoss({
+          connectionString,
+          // Isola tabelas do boss para não colidir com schemas existentes
+          schema: process.env.PG_BOSS_SCHEMA || 'pgboss',
+        });
+
+        try {
+          await boss.start();
+        } catch (err) {
+          console.error('Falha ao iniciar PgBoss', err);
+          throw err;
+        }
+
         return boss;
       },
     },
