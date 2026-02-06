@@ -40,7 +40,6 @@ type CloudCredentials = {
 export class WhatsappService implements OnModuleInit {
   private readonly connections = new Map<string, ConnectionState>();
   private readonly sockets = new Map<string, any>();
-  private readonly reconnectTimers = new Map<string, NodeJS.Timeout>();
   private readonly streams = new Map<string, Subject<MessageEvent>>();
   private readonly decryptFailures = new Map<
     string,
@@ -53,6 +52,7 @@ export class WhatsappService implements OnModuleInit {
   private readonly historyProcessing = new Set<string>();
   private readonly sessionBaseDir =
     process.env.WPP_SESSION_DIR || path.join(process.cwd(), '.wppconnect');
+  private readonly reconnectTimers = new Map<string, NodeJS.Timeout>();
   private tablesPromise: Promise<{
     conversations: any;
     messages: any;
@@ -189,6 +189,23 @@ export class WhatsappService implements OnModuleInit {
       }
       this.sockets.delete(accountId);
     }
+
+    const existingTimer = this.reconnectTimers.get(accountId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.reconnectTimers.delete(accountId);
+    }
+  }
+
+  private scheduleReconnect(accountId: string, delayMs = 5000) {
+    if (this.reconnectTimers.has(accountId)) return;
+    const timer = setTimeout(() => {
+      this.reconnectTimers.delete(accountId);
+      this.startQr(accountId).catch(() => {
+        // swallow errors; will try again on demand or next schedule
+      });
+    }, delayMs);
+    this.reconnectTimers.set(accountId, timer);
   }
 
   private registerDecryptFailure(accountId: string) {
@@ -512,6 +529,12 @@ export class WhatsappService implements OnModuleInit {
         .then((client) => {
           this.cleanupSocket(accountId);
           this.sockets.set(accountId, client);
+          // Cancel any pending reconnect since we have a live client
+          const pendingReconnect = this.reconnectTimers.get(accountId);
+          if (pendingReconnect) {
+            clearTimeout(pendingReconnect);
+            this.reconnectTimers.delete(accountId);
+          }
           client.onStateChange((state: string) => {
             const current = this.getStatus(accountId);
             if (state === 'CONNECTED') {
@@ -531,6 +554,7 @@ export class WhatsappService implements OnModuleInit {
                 lastError: state,
                 lastUpdatedAt: Date.now(),
               });
+              this.scheduleReconnect(accountId, 5000);
             }
           });
           const handleMessage = (message: any) => {
@@ -589,6 +613,7 @@ export class WhatsappService implements OnModuleInit {
           };
           this.connections.set(accountId, next);
           resolve(next);
+          this.scheduleReconnect(accountId, 10000);
         });
     });
 
@@ -611,6 +636,11 @@ export class WhatsappService implements OnModuleInit {
         setTimeout(() => resolve(this.getStatus(accountId)), 12000),
       ),
     ]);
+
+    // Se ainda desconectado, agenda nova tentativa para manter sessão viva.
+    if (resolved.status !== 'connected') {
+      this.scheduleReconnect(accountId, 8000);
+    }
     return resolved;
   }
 
