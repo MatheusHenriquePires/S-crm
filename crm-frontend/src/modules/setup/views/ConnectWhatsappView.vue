@@ -24,7 +24,13 @@ const router = useRouter()
 
 <style scoped>
 :global(body) {
-  background: #f5f7fb;
+  background: radial-gradient(
+    circle at 10% 20%,
+    #e8f6ef 0%,
+    #fdf3e7 30%,
+    #f7eafc 60%,
+    #f9f9ff 100%
+  );
 }
 
 .whatsapp-page {
