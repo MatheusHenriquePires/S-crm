@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import wppconnect = require('@wppconnect-team/wppconnect');
 import pino from 'pino';
-import { and, desc, eq, gt, lt, isNotNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, lt, isNotNull } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { db, pool } from '../db/db';
 import {
@@ -1365,7 +1365,7 @@ export class WhatsappService implements OnModuleInit {
           since ? gt(messages.createdAt, since) : undefined,
         ),
       )
-      .orderBy(messages.createdAt);
+      .orderBy(asc(messages.createdAt), asc(messages.id));
 
     return rows.map((row) => {
       const mime = row.mimeType || null;
@@ -1373,12 +1373,17 @@ export class WhatsappService implements OnModuleInit {
         row.mediaUrl ||
         (mime && (mime.startsWith('audio') || mime.startsWith('image'))),
       );
+      const direction =
+        typeof row.direction === 'string' && row.direction.toLowerCase() === 'outbound'
+          ? 'OUTBOUND'
+          : 'INBOUND';
       return {
         ...row,
         body: row.text || '',
         messageTimestamp: row.createdAt,
         mimetype: mime,
         hasMedia,
+        direction,
         status: null,
         replyToWamid: null,
       };
