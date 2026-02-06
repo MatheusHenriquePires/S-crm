@@ -57,6 +57,8 @@ const audioMeta = ref<Record<string, { duration: number; current: number }>>({})
 const audioPlaying = ref<Record<string, boolean>>({})
 const audioVolume = ref<Record<string, number>>({})
 const volumeOpenFor = ref<string | null>(null)
+const editingName = ref(false)
+const contactNameDraft = ref('')
 
 const SEEN_KEY = 'conversation_seen_v1'
 
@@ -173,6 +175,38 @@ function isUnread(conversation: Conversation) {
   const last = new Date(conversation.lastMessageAt).getTime()
   const seenTs = new Date(seen).getTime()
   return Number.isFinite(last) && Number.isFinite(seenTs) ? last > seenTs : false
+}
+
+async function startEditName() {
+  if (!activeConversation.value) return
+  editingName.value = true
+  contactNameDraft.value = activeConversation.value.contactName || ''
+  await nextTick()
+}
+
+async function saveContactName() {
+  if (!activeConversation.value || !accountId.value) {
+    editingName.value = false
+    return
+  }
+  const clean = contactNameDraft.value.trim()
+  if (!clean || clean === activeConversation.value.contactName) {
+    editingName.value = false
+    return
+  }
+  try {
+    await http.patch(`/whatsapp/conversations/${activeConversation.value.id}/contact`, {
+      accountId: accountId.value,
+      name: clean,
+    })
+    conversations.value = conversations.value.map((c) =>
+      c.id === activeConversation.value?.id ? { ...c, contactName: clean } : c,
+    )
+  } catch {
+    // ignore
+  } finally {
+    editingName.value = false
+  }
 }
 
 function unreadCount(conversation: Conversation) {
@@ -697,9 +731,22 @@ onBeforeUnmount(() => {
               </span>
             </div>
             <div>
-              <strong>
-                {{ activeConversation?.contactName || formatContact(activeConversation?.contactPhone || '') }}
-              </strong>
+              <div class="name-row">
+                <template v-if="editingName">
+                  <input
+                    v-model="contactNameDraft"
+                    class="inline-input"
+                    @keyup.enter="saveContactName"
+                    @blur="saveContactName"
+                  />
+                </template>
+                <template v-else>
+                  <strong @click="startEditName">
+                    {{ activeConversation?.contactName || formatContact(activeConversation?.contactPhone || '') }}
+                  </strong>
+                </template>
+                <button class="icon-btn" type="button" title="Renomear" @click="startEditName">✏️</button>
+              </div>
               <div class="muted">WhatsApp conectado</div>
             </div>
           </div>

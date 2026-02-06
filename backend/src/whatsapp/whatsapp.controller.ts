@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Query,
   Res,
   Param,
@@ -233,6 +234,20 @@ export class WhatsappController {
       conversationId,
       body.body,
       body.replyToWamid ?? null,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('conversations/:conversationId/contact')
+  async updateContact(
+    @Param('conversationId') conversationId: string,
+    @Body('accountId') accountId: string,
+    @Body('name') name: string,
+  ) {
+    return this.whatsapp.updateConversationContactName(
+      accountId,
+      conversationId,
+      name,
     );
   }
 

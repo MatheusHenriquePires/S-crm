@@ -1554,6 +1554,44 @@ export class WhatsappService implements OnModuleInit {
     return { ok: true };
   }
 
+  async updateConversationContactName(
+    accountId: string,
+    conversationId: string,
+    name: string,
+  ) {
+    const cleanName = (name || '').trim();
+    if (!cleanName) {
+      throw new Error('Nome invalido');
+    }
+
+    const { conversations, contacts } = await this.getTables();
+    const convo = await db
+      .select({
+        id: conversations.id,
+        accountId: conversations.accountId,
+        contactId: conversations.contactId,
+      })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.accountId, accountId),
+        ),
+      )
+      .limit(1);
+
+    if (!convo.length) {
+      throw new Error('Conversa nao encontrada');
+    }
+
+    await db
+      .update(contacts)
+      .set({ name: cleanName })
+      .where(eq(contacts.id, convo[0].contactId));
+
+    return { ok: true, name: cleanName };
+  }
+
   async disconnectQr(accountId: string) {
     const sessionDir = path.join(process.cwd(), '.wppconnect', accountId);
     this.cleanupSocket(accountId);
