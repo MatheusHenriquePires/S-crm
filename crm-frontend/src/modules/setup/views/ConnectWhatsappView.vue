@@ -10,8 +10,8 @@ const router = useRouter()
     <header class="page-head">
       <div>
         <p class="eyebrow">Passo 3 de 3</p>
-        <h1>Conecte o canal e comece a receber leads</h1>
-        <p class="muted">Ative o WhatsApp via Cloud API ou QR Code e siga o fluxo.</p>
+        <h1>Conectar WhatsApp</h1>
+        <p class="muted">Ative via Cloud API ou QR Code e siga o fluxo.</p>
       </div>
       <button class="ghost" type="button" @click="router.push('/')">Fechar</button>
     </header>
@@ -24,16 +24,16 @@ const router = useRouter()
 
 <style scoped>
 :global(body) {
-  background: radial-gradient(circle at 10% 20%, #e8f6ef 0%, #fdf3e7 30%, #f7eafc 60%, #f9f9ff 100%);
+  background: #f5f7fb;
 }
 
 .whatsapp-page {
   min-height: 100vh;
-  max-width: 860px;
+  max-width: 820px;
   margin: 0 auto;
   padding: 48px 20px 64px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .page-head {
@@ -54,7 +54,7 @@ const router = useRouter()
 .page-head h1 {
   margin: 0;
   color: #0b1c33;
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1.2;
 }
 
