@@ -7,7 +7,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
-import { createId } from '@paralleldrive/cuid2';
 
 import { db } from '../db/db';
 import { getAccountsTable, getUsersTable } from '../db/tables';
@@ -48,14 +47,19 @@ export class AuthService {
       }
     }
 
-    const accountId = createId();
+    const inserted = await db
+      .insert(accounts)
+      .values({
+        name: dto.name,
+        ownerName: dto.ownerName ?? null,
+        email: dto.email ?? null,
+      })
+      .returning({ id: accounts.id });
 
-    await db.insert(accounts).values({
-      id: accountId,
-      name: dto.name,
-      ownerName: dto.ownerName ?? null,
-      email: dto.email ?? null,
-    });
+    const accountId = inserted?.[0]?.id;
+    if (!accountId) {
+      throw new InternalServerErrorException('Falha ao criar conta.');
+    }
 
     return { id: accountId };
   }
@@ -90,29 +94,32 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, this.saltRounds);
-    const userId = createId();
 
-    await db.insert(users).values({
-      id: userId,
-      accountId: dto.accountId,
-      name: dto.name,
-      email: dto.email,
-      passwordHash,
-      role: 'ADMIN',
-    });
-
-    const token = await this.signToken(userId, dto.accountId, 'ADMIN');
-
-    return {
-      user: {
-        id: userId,
+    const inserted = await db
+      .insert(users)
+      .values({
         accountId: dto.accountId,
         name: dto.name,
         email: dto.email,
+        passwordHash,
         role: 'ADMIN',
-      },
-      token,
-    };
+      })
+      .returning({
+        id: users.id,
+        accountId: users.accountId,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+      });
+
+    const user = inserted?.[0];
+    if (!user) {
+      throw new InternalServerErrorException('Falha ao criar usuario.');
+    }
+
+    const token = await this.signToken(user.id, user.accountId, user.role);
+
+    return { user, token };
   }
 
   // ===============================

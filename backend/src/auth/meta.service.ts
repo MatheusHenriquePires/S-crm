@@ -1,5 +1,6 @@
+import { randomUUID } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { Injectable } from '@nestjs/common';
-import { createId } from '@paralleldrive/cuid2';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/db';
 import { getAccountsTable, getUsersTable } from '../db/tables';
@@ -27,6 +28,7 @@ export class MetaAuthService {
   private scopes =
     process.env.META_SCOPES ||
     'email,public_profile,business_management,whatsapp_business_management,whatsapp_business_messaging';
+  private readonly saltRounds = Number(process.env.BCRYPT_ROUNDS ?? 12);
 
   buildLoginUrl(returnUrl?: string) {
     if (!this.appId) {
@@ -133,8 +135,6 @@ export class MetaAuthService {
     const accounts = await getAccountsTable();
     const users = await getUsersTable();
     const email = metaUser.email?.toLowerCase() || null;
-    let accountId = '';
-    let userId = '';
 
     if (email) {
       const existingUser = await db
@@ -143,29 +143,43 @@ export class MetaAuthService {
         .where(eq(users.email, email))
         .limit(1);
       if (existingUser.length) {
-        accountId = existingUser[0].accountId;
-        userId = existingUser[0].id;
-        return { accountId, userId };
+        return {
+          accountId: existingUser[0].accountId,
+          userId: existingUser[0].id,
+        };
       }
     }
 
-    accountId = createId();
-    await db.insert(accounts).values({
-      id: accountId,
-      name: metaUser.name || 'Conta Meta',
-      ownerName: metaUser.name || null,
-      email,
-    });
+    const insertedAccount = await db
+      .insert(accounts)
+      .values({
+        name: metaUser.name || 'Conta Meta',
+        ownerName: metaUser.name || null,
+        email,
+      })
+      .returning({ id: accounts.id });
 
-    userId = createId();
-    await db.insert(users).values({
-      id: userId,
-      accountId,
-      name: metaUser.name || 'Usuario Meta',
-      email: email || `${accountId}@meta.local`,
-      passwordHash: createId(),
-      role: 'ADMIN',
-    });
+    const accountId = insertedAccount?.[0]?.id;
+    if (!accountId) {
+      throw new Error('Falha ao criar conta Meta.');
+    }
+
+    const passwordHash = await bcrypt.hash(randomUUID(), this.saltRounds);
+    const insertedUser = await db
+      .insert(users)
+      .values({
+        accountId,
+        name: metaUser.name || 'Usuario Meta',
+        email: email || `${accountId}@meta.local`,
+        passwordHash,
+        role: 'ADMIN',
+      })
+      .returning({ id: users.id });
+
+    const userId = insertedUser?.[0]?.id;
+    if (!userId) {
+      throw new Error('Falha ao criar usuario Meta.');
+    }
 
     return { accountId, userId };
   }
@@ -178,7 +192,7 @@ export class MetaAuthService {
     const encryptedPayload = encryptPayload({ accessToken });
     await db.execute(
       `INSERT INTO "MetaIntegration" ("id", "accountId", "metaUserId", "encryptedPayload", "createdAt", "updatedAt")
-       VALUES ('${createId()}', '${accountId}', '${metaUserId}', '${encryptedPayload}', now(), now())
+       VALUES ('${randomUUID()}', '${accountId}', '${metaUserId}', '${encryptedPayload}', now(), now())
        ON CONFLICT ("accountId") DO UPDATE SET "metaUserId" = EXCLUDED."metaUserId", "encryptedPayload" = EXCLUDED."encryptedPayload", "updatedAt" = now()` as any,
     );
   }
