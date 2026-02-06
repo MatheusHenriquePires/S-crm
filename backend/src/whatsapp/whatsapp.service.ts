@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
-import type PgBoss from 'pg-boss';
+import type { PgBoss } from 'pg-boss';
 import * as path from 'path';
 import * as fs from 'fs';
 import wppconnect = require('@wppconnect-team/wppconnect');

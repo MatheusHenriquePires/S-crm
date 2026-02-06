@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import PgBoss from 'pg-boss';
+import { PgBoss } from 'pg-boss';
 
 @Global()
 @Module({
